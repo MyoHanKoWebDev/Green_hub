@@ -1,0 +1,13 @@
+# Ignore Laravel Backend junk
+greenhub-backend/vendor/
+greenhub-backend/.env
+greenhub-backend/storage/*.php
+
+# Ignore Node modules if you have them in frontend
+greenhub-admin/node_modules/
+greenhub-user/node_modules/
+greenhub-user/.env
+
+# Ignore OS files
+.DS_Store
+Thumbs.db
