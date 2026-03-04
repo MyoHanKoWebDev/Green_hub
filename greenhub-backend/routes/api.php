@@ -5,10 +5,12 @@ use App\Http\Controllers\Api\Admin\GreenProductController;
 use App\Http\Controllers\Api\User\AuthController;
 use App\Http\Controllers\Api\Admin\PaymentController;
 use App\Http\Controllers\Api\Admin\ProjectTypeController;
+use App\Http\Controllers\Api\User\CommentController;
 use App\Http\Controllers\Api\User\PostController;
 use App\Http\Controllers\Api\User\ProjectController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use PhpParser\Comment;
 
 /*
 |--------------------------------------------------------------------------
@@ -36,8 +38,16 @@ Route::prefix('user')->group(function () {
 
     Route::controller(PostController::class)->prefix('posts')->group(function () {
         Route::get('/', 'index');
+        Route::get('/{id}', 'show');
         Route::post('/', 'store');
+        Route::post('/toggleReact', 'toggleReact');
+        Route::post('/toggleSave', 'toggleSave');
         Route::put('/{id}', 'update');
+        Route::delete('/{id}', 'destroy');
+    });
+
+    Route::controller(CommentController::class)->prefix('comments')->group(function () {
+        Route::post('/', 'store');
         Route::delete('/{id}', 'destroy');
     });
 });
@@ -79,7 +89,7 @@ Route::prefix('admin')->group(function () {
 });
 
 
-Route::get('/check-limits', function() {
+Route::get('/check-limits', function () {
     return response()->json([
         'upload_max' => ini_get('upload_max_filesize'),
         'post_max' => ini_get('post_max_size'),

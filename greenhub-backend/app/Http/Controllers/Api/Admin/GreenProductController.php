@@ -187,6 +187,6 @@ class GreenProductController extends Controller
         // }
 
         $product->delete();
-        return response()->json(['status' => true, 'message' => 'Moved to trash']);
+        return response()->json(['status' => true, 'message' => 'Moved to trash'], 200);
     }
 }

@@ -34,7 +34,7 @@ class Post extends Model
 
     public function reacts()
     {
-        return $this->hasMany(React::class, 'member_id');
+        return $this->hasMany(React::class, 'post_id');
     }
 
     public function savedPosts()

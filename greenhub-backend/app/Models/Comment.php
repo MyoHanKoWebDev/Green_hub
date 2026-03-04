@@ -9,13 +9,18 @@ class Comment extends Model
 {
     use HasFactory;
 
+    protected $fillable = ['comTtext', 'comDate', 'post_id', 'member_id'];
+
+    protected $casts = [
+        'comDate' => 'datetime'
+    ];
      public function user()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class, 'member_id');
     }
 
     public function post()
     {
-        return $this->belongsTo(Post::class);
+        return $this->belongsTo(Post::class, 'post_id');
     }
 }

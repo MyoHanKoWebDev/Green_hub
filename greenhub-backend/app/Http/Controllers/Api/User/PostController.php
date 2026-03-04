@@ -3,7 +3,10 @@
 namespace App\Http\Controllers\Api\User;
 
 use App\Http\Controllers\Controller;
+use App\Models\Comment;
 use App\Models\Post;
+use App\Models\React;
+use App\Models\SavedPost;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -14,7 +17,21 @@ class PostController extends Controller
     {
         // Get all active project types
         $types = Post::all();
-        return response()->json(['status' => true, 'data' => $types]);
+        return response()->json(['status' => true, 'data' => $types], 200);
+    }
+
+    public function show($id)
+    {
+        $post = Post::withCount(['comments', 'reacts'])
+            ->with(['comments.user', 'user'])
+            ->find($id);
+
+        if (!$post) return response()->json(['message' => 'Not Data'], 404);
+
+        return response()->json([
+            'status' => true,
+            'data' => $post
+        ], 200);
     }
 
     public function store(Request $request)
@@ -111,6 +128,64 @@ class PostController extends Controller
             }
         }
         $post->delete();
-        return response()->json(['status' => true, 'message' => 'Post deleted']);
+        return response()->json(['status' => true, 'message' => 'Post deleted'], 200);
+    }
+
+    public function toggleReact(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'post_id' => 'required|exists:knowledge_posts,id',
+            'member_id' => 'required|exists:users,id',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['status' => false, 'errors' => $validator->errors()], 422);
+        }
+
+        return DB::transaction(function () use ($request) {
+            $data = [
+                'post_id' => $request->post_id,
+                'member_id' => $request->member_id
+            ];
+
+            $existing = React::where($data)->first();
+
+            if ($existing) {
+                $existing->delete();
+                return response()->json(['status' => true, 'action' => 'unliked']);
+            }
+
+            React::create(array_merge($data, ['react_date' => now()]));
+            return response()->json(['status' => true, 'action' => 'liked']);
+        });
+    }
+
+    public function toggleSave(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'post_id' => 'required|exists:knowledge_posts,id',
+            'member_id' => 'required|exists:users,id',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['status' => false, 'errors' => $validator->errors()], 422);
+        }
+
+        return DB::transaction(function () use ($request) {
+            $data = [
+                'post_id' => $request->post_id,
+                'member_id' => $request->member_id
+            ];
+
+            $saved = SavedPost::where($data)->first();
+
+            if ($saved) {
+                $saved->delete();
+                return response()->json(['status' => true, 'message' => 'Unsaved']);
+            }
+
+            SavedPost::create(array_merge($data, ['savedDate' => now()]));
+            return response()->json(['status' => true, 'message' => 'Saved']);
+        });
     }
 }
