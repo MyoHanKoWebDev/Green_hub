@@ -15,6 +15,7 @@ const Signup = () => {
 
   const nameRef = useRef();
   const emailRef = useRef();
+  const addressRef = useRef();
   const passwordRef = useRef();
   const confirmPasswordRef = useRef();
   const imageRef = useRef();
@@ -35,6 +36,7 @@ const Signup = () => {
     const data = new FormData();
     data.append("name", nameRef.current.value);
     data.append("email", emailRef.current.value);
+    data.append("address", addressRef.current.value);
     data.append("password", passwordRef.current.value);
     data.append("password_confirmation", confirmPasswordRef.current.value);
 
@@ -49,6 +51,7 @@ const Signup = () => {
       if (response.data.status) {
 
         login(response.data.user, response.data.token);
+        navigate("/");
         toast.success(response.data.message, {
           duration: 4000,
           style: {
@@ -150,6 +153,23 @@ const Signup = () => {
                 />
                 {errors.email && (
                   <p className="text-xs text-red-500 mt-1">{errors.email[0]}</p>
+                )}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm/6 font-medium text-gray-900">
+                Address
+              </label>
+              <div className="mt-2">
+                <input
+                  ref={addressRef}
+                  type="address"
+                  required
+                  className={`block w-full rounded-md bg-white px-3 py-1.5 text-gray-900 outline-1 -outline-offset-1 ${errors.address ? "outline-red-500" : "outline-gray-300"} focus:outline-lime-600`}
+                />
+                {errors.address && (
+                  <p className="text-xs text-red-500 mt-1">{errors.address[0]}</p>
                 )}
               </div>
             </div>

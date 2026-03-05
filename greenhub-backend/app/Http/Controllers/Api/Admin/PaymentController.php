@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Payment;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 
 class PaymentController extends Controller
@@ -25,19 +26,30 @@ class PaymentController extends Controller
         $request->merge(['method' => $cleanMethod]);
 
         $validator = Validator::make($request->all(), [
-            'method' => 'required|string|unique:payments,method'
+            'method' => 'required|string|unique:payments,method',
+            'payImg'       => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
         ]);
 
         if ($validator->fails()) {
             return response()->json(['status' => false, 'errors' => $validator->errors()], 422);
         }
 
-        $payment = Payment::create([
-            'method' => $cleanMethod,
-            'is_active' => true // Including our new logic!
-        ]);
+        return DB::transaction(function () use ($request, $cleanMethod) {
+            // 1. Handle Image
+            $imageName = null;
+            if ($request->hasFile('payImg')) {
+                $imageName = time() . '_' . $request->file('payImg')->getClientOriginalName();
+                $request->file('payImg')->move(public_path('uploads/admin'), $imageName);
+            }
 
-        return response()->json(['status' => true, 'message' => 'Payment method added!', 'data' => $payment], 201);
+            $payment = Payment::create([
+                'method' => $cleanMethod,
+                'is_active' => true,
+                'payImg' => $imageName
+            ]);
+
+            return response()->json(['status' => true, 'message' => 'Payment method added!', 'data' => $payment], 201);
+        });
     }
 
     // PUT: Update an existing method
@@ -46,25 +58,43 @@ class PaymentController extends Controller
         $payment = Payment::find($id);
         if (!$payment) return response()->json(['message' => 'Not found'], 404);
 
-        // Format the input just like you did in the store method
-        $cleanMethod = strtoupper(trim($request->method));
-        $request->merge(['method' => $cleanMethod]);
+        // 1. Clean the input
+        if ($request->has('method')) {
+            $request->merge(['method' => strtoupper(trim($request->method))]);
+        }
 
-        // Validation: Unique, but ignore this $id
+        // 2. Validation
         $validator = Validator::make($request->all(), [
-            'method' => 'required|string|unique:payments,method,' . $id
+            'method' => 'sometimes|required|string|unique:payments,method,' . $id,
+            'payImg' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
+            'is_active' => 'sometimes|boolean'
         ]);
 
         if ($validator->fails()) {
             return response()->json(['status' => false, 'errors' => $validator->errors()], 422);
         }
 
-        $payment->update([
-            'method' => $cleanMethod,
-            'is_active' => $request->has('is_active') ? $request->is_active : $payment->is_active
-        ]);
+        return DB::transaction(function () use ($request, $payment) {
+            // Handle Image Replacement
+            if ($request->hasFile('payImg')) {
+                if ($payment->payImg && file_exists(public_path('uploads/admin/' . $payment->payImg))) {
+                    unlink(public_path('uploads/admin/' . $payment->payImg));
+                }
+                $imageName = time() . '_' . $request->file('payImg')->getClientOriginalName();
+                $request->file('payImg')->move(public_path('uploads/admin'), $imageName);
+                $payment->payImg = $imageName;
+            }
 
-        return response()->json(['status' => true, 'message' => 'Payment Method Updated successfully'], 200);
+            // Update other fields
+            $payment->method = $request->input('method', $payment->method);
+            if ($request->has('is_active')) {
+                $payment->is_active = $request->is_active;
+            }
+
+            $payment->save();
+
+            return response()->json(['status' => true, 'message' => 'Payment Method Updated successfully'], 200);
+        });
     }
 
     //making disable function on active

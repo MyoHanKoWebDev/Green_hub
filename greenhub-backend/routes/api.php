@@ -31,6 +31,8 @@ Route::prefix('user')->group(function () {
         Route::post('/verify-otp',  'verifyOtp');
         Route::post('/reset-password', 'resetPassword');
         Route::post('/google-login', 'googleLogin');
+        Route::put('/update-profile/{id}', 'updateProfile');
+        Route::put('/change-password/{id}', 'changePassword');
     });
     Route::controller(ProjectController::class)->prefix('projects')->group(function () {
         Route::get('/', 'getMemberProjects');
@@ -75,6 +77,7 @@ Route::prefix('admin')->group(function () {
         Route::get('/', 'index');
         Route::get('/{id}', 'show');
         Route::post('/', 'store');
+        Route::post('/rating', 'giveRating');
         Route::put('/{id}', 'update');
         Route::delete('/{id}', 'destroy');
     });

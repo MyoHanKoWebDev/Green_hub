@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\EcoProject;
 use App\Models\GreenProduct;
 use App\Models\ProductProject;
+use App\Models\Rating;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
@@ -15,9 +16,15 @@ class GreenProductController extends Controller
 {
     public function index()
     {
-        // We only show products that have at least 1 in stock
-        $products = GreenProduct::where('stock_qty', '>', 0)->get();
-        return response()->json(['status' => true, 'data' => $products]);
+        $products = GreenProduct::where('stock_qty', '>', 0)
+            ->withCount('ratings')
+            ->withAvg('ratings', 'rating')
+            ->get();
+
+        return response()->json([
+            'status' => true,
+            'data' => $products
+        ]);
     }
 
     public function show($id)
@@ -71,7 +78,7 @@ class GreenProductController extends Controller
             'description' => 'required|string',
             'price'       => 'required|numeric',
             'stock_qty'   => 'required|integer',
-            'image'       => 'nullable|image|max:2048',
+            'image'       => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
             'project_id'  => 'required|integer|exists:eco_projects,id'
         ]);
 
@@ -188,5 +195,26 @@ class GreenProductController extends Controller
 
         $product->delete();
         return response()->json(['status' => true, 'message' => 'Moved to trash'], 200);
+    }
+
+    public function giveRating(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'rating' => 'required|integer|min:1|max:5',
+            'product_id' => 'required|exists:green_products,id',
+            'member_id' => 'required|exists:users,id',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['status' => false, 'errors' => $validator->errors()], 422);
+        }
+
+        // Use updateOrCreate if you want them to be able to change their rating later
+        Rating::updateOrCreate(
+            ['product_id' => $request->product_id, 'member_id' => $request->member_id],
+            ['rating' => $request->rating, 'ratedDate' => now()]
+        );
+
+        return response()->json(['status' => true, 'message' => 'Rating saved!']);
     }
 }

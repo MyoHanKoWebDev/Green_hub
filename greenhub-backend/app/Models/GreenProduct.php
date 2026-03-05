@@ -8,16 +8,19 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class GreenProduct extends Model
 {
-    use HasFactory , SoftDeletes;
+    use HasFactory, SoftDeletes;
     protected $fillable = [
-    'productName',
-    'description',
-    'price',
-    'image',
-    'stock_qty',
+        'productName',
+        'description',
+        'price',
+        'image',
+        'stock_qty',
     ];
 
-     public function ratings()
+    protected $casts = [
+        'ratings_avg_rating' => 'float',
+    ];
+    public function ratings()
     {
         return $this->hasMany(Rating::class, 'product_id');
     }

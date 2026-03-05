@@ -9,9 +9,11 @@ class Rating extends Model
 {
     use HasFactory;
 
+    protected $fillable = ['rating', 'ratedDate', 'product_id', 'member_id'];
+
      public function user()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class , 'member_id');
     }
 
     public function greenProduct()

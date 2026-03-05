@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Carbon\Carbon;
 use App\Mail\OtpMail;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
@@ -49,6 +50,7 @@ class AuthController extends Controller
                 'max:255',
                 'unique:users'
             ],
+            'address' => ['required', 'string', 'max:500'],
             'password' => [
                 'required',
                 'string',
@@ -67,6 +69,7 @@ class AuthController extends Controller
         $messages = [
             'name.regex' => 'The name can only contain letters and spaces (no numbers or symbols).',
             'email.unique' => 'This email is already registered with Greenhub.',
+            'address.required' => 'Please provide a delivery address for your green products.',
             'password.regex' => 'Your password must contain at least one uppercase letter, one lowercase letter, and one number.',
             'password.min' => 'For your security, the password must be at least 8 characters long.',
             'proImg.required' => 'Please upload a profile picture to complete your registration.',
@@ -98,6 +101,7 @@ class AuthController extends Controller
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
+            'address' => $request->address,
             'password' => $hashedPassword,
             'proImg' => $imageName,
             'joinDate' => now()
@@ -112,6 +116,51 @@ class AuthController extends Controller
             'user' => $user,
             'token' => $token
         ], 201);
+    }
+
+    public function updateProfile(Request $request, $id)
+    {
+        $user = User::findOrFail($id);
+
+        // 1. Validation (Email and Password usually handled in separate functions)
+        $validator = Validator::make($request->all(), [
+            'name' => ['string', 'max:255', 'regex:/^[A-Za-z\s]+$/'],
+            'address' => ['string', 'max:500'],
+            'proImg' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:2048']
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['status' => false, 'errors' => $validator->errors()], 422);
+        }
+
+        return DB::transaction(function () use ($request, $user) {
+            // 2. Update Basic Info
+            $user->name = $request->input('name', $user->name);
+            $user->address = $request->input('address', $user->address);
+
+            // 3. Handle Image Update
+            if ($request->hasFile('proImg')) {
+                // Delete Old Image if it exists
+                if ($user->proImg && file_exists(public_path('uploads/profiles/' . $user->proImg))) {
+                    unlink(public_path('uploads/profiles/' . $user->proImg));
+                }
+
+                // Upload New Image
+                $imageName = time() . '_' . $request->file('proImg')->getClientOriginalName();
+                $request->file('proImg')->move(public_path('uploads/profiles'), $imageName);
+                $user->proImg = $imageName;
+            }
+
+            $user->fill($request->only(['name', 'address']));
+
+            $user->save();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Profile updated successfully!',
+                'user' => $user
+            ]);
+        });
     }
 
     public function login(Request $request)
@@ -160,6 +209,60 @@ class AuthController extends Controller
         ], 200);
     }
 
+    public function changePassword(Request $request, $id)
+    {
+        // 1. Define Validation Rules
+        $rules = [
+            'current_password' => [
+                'required',
+                'string'
+            ],
+            'new_password' => [
+                'required',
+                'string',
+                'min:8',
+                'regex:/^(?=.*[A-Z])(?=.*[a-z])(?=.*[0-9]).+$/',
+                'confirmed' // This looks for 'new_password_confirmation'
+            ]
+        ];
+
+        // 2. Define Custom Error Messages
+        $messages = [
+            'new_password.min' => 'For your security, the new password must be at least 8 characters long.',
+            'new_password.regex' => 'Your new password must contain at least one uppercase letter, one lowercase letter, and one number.',
+            'new_password.confirmed' => 'The new password confirmation does not match.',
+        ];
+
+        // 3. Run Validator
+        $validator = Validator::make($request->all(), $rules, $messages);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => false,
+                'errors' => $validator->errors()
+            ], 422);
+        }
+        $user = User::findOrFail($id);
+
+        // 2. Verify Current Password using your custom hasher
+        // We hash the input and compare it to what is in the DB
+        if ($this->myCustomHasher($request->current_password) !== $user->password) {
+            return response()->json([
+                'status' => false,
+                'message' => 'The current password you entered is incorrect.'
+            ], 401);
+        }
+
+        // 3. Update to New Password
+        $user->password = $this->myCustomHasher($request->new_password);
+        $user->save();
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Password updated successfully! Please log in again if required.'
+        ]);
+    }
+
     //googlelogin function
     public function googleLogin(Request $request)
     {
@@ -181,6 +284,7 @@ class AuthController extends Controller
             $user = User::create([
                 'email' => $googleUser['email'],
                 'name' => $googleUser['name'],
+                'address' => null,
                 'proImg' => $googleUser['picture'],
                 // Use your CUSTOM hashing function here to be consistent!
                 'password' => $this->myCustomHasher(Str::random(24)),
