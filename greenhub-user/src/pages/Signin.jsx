@@ -42,6 +42,7 @@ const Signin = () => {
         //setShowSuccess(true);
         //setSuccessMsg(response.data.message);
         login(response.data.user, response.data.token);
+        navigate("/");
         toast.success(response.data.message || "Welcome back!", {
           duration: 4000,
           style: {
@@ -50,8 +51,6 @@ const Signin = () => {
             color: '#fff',
           },
         });
-
-        navigate("/");
       }
     } catch (err) {
       if (err.response) {

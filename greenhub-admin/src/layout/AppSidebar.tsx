@@ -85,7 +85,7 @@ const navItems: NavItem[] = [
   {
     name: "Payment",
     icon: <CreditCardIcon className="w-5 h-5" />,
-    subItems: [{ name: "Basic Tables", path: "/basic-tables", pro: false }],
+    subItems: [{ name: "Manage Payment", path: "/payment", pro: false }],
   },
 
   // {

@@ -61,7 +61,6 @@ Route::prefix('admin')->group(function () {
         Route::post('/', 'store');
         Route::put('/{id}', 'update');
         Route::delete('/{id}', 'destroy');
-        Route::patch('/toggle/{id}', 'toggleStatus');
     });
 
     // --- Project Type Management ---

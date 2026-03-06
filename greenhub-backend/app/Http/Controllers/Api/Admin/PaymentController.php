@@ -13,7 +13,7 @@ class PaymentController extends Controller
     // GET: List all payment methods
     public function index()
     {
-        $payments = Payment::where('is_active', true)->get();
+        $payments = Payment::all();
         return response()->json(['status' => true, 'data' => $payments], 200);
     }
 
@@ -44,7 +44,6 @@ class PaymentController extends Controller
 
             $payment = Payment::create([
                 'method' => $cleanMethod,
-                'is_active' => true,
                 'payImg' => $imageName
             ]);
 
@@ -67,7 +66,6 @@ class PaymentController extends Controller
         $validator = Validator::make($request->all(), [
             'method' => 'sometimes|required|string|unique:payments,method,' . $id,
             'payImg' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
-            'is_active' => 'sometimes|boolean'
         ]);
 
         if ($validator->fails()) {
@@ -87,28 +85,11 @@ class PaymentController extends Controller
 
             // Update other fields
             $payment->method = $request->input('method', $payment->method);
-            if ($request->has('is_active')) {
-                $payment->is_active = $request->is_active;
-            }
 
             $payment->save();
 
             return response()->json(['status' => true, 'message' => 'Payment Method Updated successfully'], 200);
         });
-    }
-
-    //making disable function on active
-    public function toggleStatus($id)
-    {
-        $payment = Payment::findOrFail($id);
-        $payment->is_active = !$payment->is_active; // Flips true to false, or false to true
-        $payment->save();
-
-        return response()->json([
-            'status' => true,
-            'message' => 'Status updated!',
-            'current_status' => $payment->is_active
-        ]);
     }
 
     // DELETE: Remove a method
