@@ -9,7 +9,6 @@ const Payment = () => {
         title="Payment Management | GreenHub Admin"
         description="Manage secure payment methods for GreenHub"
       />
-      
 
       <div className="space-y-6">
         <ViewPayment />

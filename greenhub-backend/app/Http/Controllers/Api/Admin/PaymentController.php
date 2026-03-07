@@ -7,6 +7,7 @@ use App\Models\Payment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 class PaymentController extends Controller
 {
@@ -26,7 +27,7 @@ class PaymentController extends Controller
         $request->merge(['method' => $cleanMethod]);
 
         $validator = Validator::make($request->all(), [
-            'method' => 'required|string|unique:payments,method',
+            'method' => 'required|string|unique:payments,method,NULL,id,deleted_at,NULL',
             'payImg'       => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
         ]);
 
@@ -64,7 +65,13 @@ class PaymentController extends Controller
 
         // 2. Validation
         $validator = Validator::make($request->all(), [
-            'method' => 'sometimes|required|string|unique:payments,method,' . $id,
+            'method' => [
+                'sometimes',
+                'required',
+                'string',
+                // Rule::unique is much cleaner for complex queries
+                Rule::unique('payments')->ignore($id)->whereNull('deleted_at'),
+            ],
             'payImg' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
         ]);
 

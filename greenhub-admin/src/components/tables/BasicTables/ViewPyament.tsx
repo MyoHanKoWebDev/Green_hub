@@ -15,6 +15,11 @@ import Button from "../../ui/button/Button.js";
 import PageBreadcrumb from "../../common/PageBreadCrumb.js";
 import { AxiosError } from "axios";
 import toast from "react-hot-toast";
+import { Modal } from "../../ui/modal/index.js";
+import Label from "../../form/Label.js";
+import Input from "../../form/input/InputField.js";
+import { useModal } from "../../../hooks/useModal.js";
+import { formatDate } from "../../../utils/helper.js";
 
 interface PaymentData {
   id: number;
@@ -25,8 +30,17 @@ interface PaymentData {
 }
 
 export default function ViewPayment() {
-  const [loading, setLoading] = useState(true);
+  const { isOpen, openModal, closeModal } = useModal();
   const [payments, setPayments] = useState<PaymentData[]>([]);
+  const [selectedPayment, setSelectedPayment] = useState<PaymentData | null>(
+    null,
+  );
+  const [loading, setLoading] = useState(true);
+
+  // Form States
+  const [methodName, setMethodName] = useState("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   const [alertConfig, setAlertConfig] = useState<{
     variant: "success" | "error";
@@ -83,6 +97,82 @@ export default function ViewPayment() {
     }
   };
 
+  // Open Modal for Create
+  const handleAddClick = () => {
+    setSelectedPayment(null);
+    setMethodName("");
+    setImagePreview(null);
+    setImageFile(null);
+    openModal();
+  };
+
+  // Open Modal for Edit
+  const handleEditClick = (payment: PaymentData) => {
+    setSelectedPayment(payment);
+    setMethodName(payment.method);
+    setImagePreview(`http://localhost:8000/uploads/admin/${payment.payImg}`);
+    setImageFile(null);
+    openModal();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setImageFile(file);
+      setImagePreview(URL.createObjectURL(file)); // Show new preview
+    }
+  };
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const formData = new FormData();
+    formData.append("method", methodName);
+    if (imageFile) formData.append("payImg", imageFile);
+
+    // For Laravel PUT requests with files, we often need to spoof the method
+    if (selectedPayment) formData.append("_method", "PUT");
+
+    try {
+      const url = selectedPayment
+        ? `/admin/payments/${selectedPayment.id}`
+        : "/admin/payments";
+      const res = await axios.post(url, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      if (res.data.status) {
+        toast.success(res.data.message, {
+          duration: 4000,
+          style: {
+            borderRadius: "10px",
+          },
+        });
+        fetchPayments();
+        closeModal();
+      }
+    } catch (err) {
+      const axiosError = err as AxiosError<{
+        message: string;
+        errors?: Record<string, string[]>;
+      }>;
+      const validationErrors = axiosError.response?.data?.errors;
+      let displayMessage =
+        axiosError.response?.data?.message || "Something went wrong";
+
+      if (validationErrors) {
+        // Pick the first error from the first failing field
+        const firstField = Object.values(validationErrors)[0];
+        displayMessage = firstField[0];
+      }
+
+      setAlertConfig({
+        variant: "error",
+        title: "Action Failed",
+        message: displayMessage,
+      });
+    }
+  };
+
   useEffect(() => {
     if (alertConfig) {
       const timer = setTimeout(() => {
@@ -91,12 +181,17 @@ export default function ViewPayment() {
       return () => clearTimeout(timer);
     }
   }, [alertConfig]);
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between mb-6">
         <PageBreadcrumb pageTitle="Payment Management" />
 
-        <Button size="sm" className="flex items-center gap-2">
+        <Button
+          onClick={handleAddClick}
+          size="sm"
+          className="flex items-center gap-2"
+        >
           <PlusIcon className="w-5 h-5" /> Add Method
         </Button>
       </div>
@@ -166,11 +261,14 @@ export default function ViewPayment() {
                         </div>
                       </TableCell>
                       <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                        {payment.created_at}
+                        {formatDate(payment.created_at)}
                       </TableCell>
                       <TableCell className="px-4 py-3 text-end">
                         <div className="flex justify-end gap-2">
-                          <button className="p-2 text-gray-500 hover:text-brand-500">
+                          <button
+                            onClick={() => handleEditClick(payment)}
+                            className="p-2 text-gray-500 hover:text-brand-500"
+                          >
                             {/* <PencilIcon className="w-5 h-5" /> */}
                             <svg
                               className="fill-current"
@@ -204,6 +302,69 @@ export default function ViewPayment() {
           )}
         </AnimatePresence>
       </div>
+
+      {/* 🏗️ SHARED MODAL FOR ADD/EDIT */}
+      <Modal isOpen={isOpen} onClose={closeModal} className="max-w-[500px] m-4">
+        <div className="relative w-full p-6 bg-white rounded-3xl dark:bg-gray-900 lg:p-10">
+          <h4 className="mb-2 text-2xl font-semibold text-gray-800 dark:text-white/90">
+            {selectedPayment ? "Edit Payment Method" : "Add New Payment Method"}
+          </h4>
+          {/* 🔔 Custom Alert Display */}
+          {alertConfig && (
+            <Alert
+              variant={alertConfig.variant}
+              title={alertConfig.title}
+              message={alertConfig.message}
+            />
+          )}
+          <form onSubmit={handleSave} className="flex flex-col gap-5 mt-6">
+            <div>
+              <Label>Method Name</Label>
+              <Input
+                type="text"
+                placeholder="e.g. KBZ Pay"
+                value={methodName}
+                onChange={(e) => setMethodName(e.target.value)}
+                required
+              />
+            </div>
+
+            <div>
+              <Label>Method Icon (Image)</Label>
+              <input
+                type="file"
+                className="mt-2 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-brand-50 file:text-brand-700 hover:file:bg-brand-100"
+                onChange={handleFileChange}
+                required={!selectedPayment}
+              />
+              {imagePreview && (
+                <div className="mt-4">
+                  <p className="text-xs text-gray-500 mb-2">Icon Preview:</p>
+                  <img
+                    src={imagePreview}
+                    alt="Preview"
+                    className="w-20 h-20 object-cover rounded-lg border p-1"
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center gap-3 mt-4 lg:justify-end">
+              <Button
+                size="sm"
+                variant="outline"
+                type="button"
+                onClick={closeModal}
+              >
+                Close
+              </Button>
+              <Button size="sm" type="submit">
+                {selectedPayment ? "Save Changes" : "Create Method"}
+              </Button>
+            </div>
+          </form>
+        </div>
+      </Modal>
     </div>
   );
 }
