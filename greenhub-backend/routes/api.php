@@ -25,14 +25,25 @@ use PhpParser\Comment;
 
 Route::prefix('user')->group(function () {
     Route::controller(AuthController::class)->group(function () {
+        // --- PUBLIC ROUTES (No Token Needed) ---
         Route::post('/register', 'register');
-        Route::post('/login',  'login');
+        Route::post('/login', 'login');
         Route::post('/send-otp', 'sendOtp');
-        Route::post('/verify-otp',  'verifyOtp');
+        Route::post('/verify-otp', 'verifyOtp');
         Route::post('/reset-password', 'resetPassword');
         Route::post('/google-login', 'googleLogin');
-        Route::put('/update-profile/{id}', 'updateProfile');
-        Route::put('/change-password/{id}', 'changePassword');
+
+        // --- PROTECTED ROUTES (Token Required & Validated) ---
+        Route::middleware('auth:sanctum')->group(function () {
+            Route::get('/verify-session', function (Request $request) {
+                return response()->json([
+                    'status' => true,
+                    'user' => $request->user()
+                ]);
+            });
+            Route::put('/update-profile/{id}', 'updateProfile');
+            Route::put('/change-password/{id}', 'changePassword');
+        });
     });
     Route::controller(ProjectController::class)->prefix('projects')->group(function () {
         Route::get('/', 'getMemberProjects');

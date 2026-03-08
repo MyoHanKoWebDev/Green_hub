@@ -207,7 +207,7 @@ class AuthController extends Controller
             'token' => $token,
             'user' => $user
         ], 200);
-    }
+    } 
 
     public function changePassword(Request $request, $id)
     {

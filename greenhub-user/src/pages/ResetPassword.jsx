@@ -6,6 +6,7 @@ import SuccessAlert from "../components/SuccessAlert";
 import toast from 'react-hot-toast'; // Import toast
 
 const ResetPassword = () => {
+  
   const location = useLocation();
   const navigate = useNavigate();
   const email = location.state?.email || "";
