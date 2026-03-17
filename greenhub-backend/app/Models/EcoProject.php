@@ -14,7 +14,7 @@ class EcoProject extends Model
 
     public function projectType()
     {
-        return $this->belongsTo(ProjectType::class);
+        return $this->belongsTo(ProjectType::class, 'project_type_id');
     }
 
     public function memberProjects()

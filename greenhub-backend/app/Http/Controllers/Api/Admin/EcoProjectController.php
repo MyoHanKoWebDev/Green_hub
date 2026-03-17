@@ -14,7 +14,7 @@ class EcoProjectController extends Controller
     public function getAdminProjects()
     {
         // Simply filter by the role column
-        $projects = EcoProject::where('role', 'admin')->get();
+        $projects = EcoProject::where('role', 'admin')->orderBy('id', 'desc')->get();
 
         return response()->json([
             'status' => true,
@@ -36,7 +36,12 @@ class EcoProjectController extends Controller
         $validator = Validator::make($request->all(), [
             'title'           => 'required|string|max:255',
             'description'     => 'required|string',
-            'video'           => 'nullable|file|mimes:mp4,mov,avi,wmv,octet-stream|max:51200',
+            'video' => [
+                'required',
+                'file', // Ensures it is actually an uploaded file
+                'mimetypes:video/mp4,video/quicktime,video/x-msvideo,video/x-ms-wmv,application/octet-stream', // Checks the content type
+                'max:51200', // 50MB limit
+            ],
             'project_type_id' => 'required|exists:project_types,id',
             'member_id'       => $isAdmin ? 'nullable' : 'required|exists:users,id',
         ]);
@@ -105,7 +110,13 @@ class EcoProjectController extends Controller
         $validator = Validator::make($request->all(), [
             'title'           => 'sometimes|required|string|max:255',
             'description'     => 'sometimes|required|string',
-            'video'           => 'nullable|file|mimes:mp4,mov,avi,wmv,octet-stream|max:51200',
+            'video' => [
+                'sometimes',
+                'required',
+                'file', // Ensures it is actually an uploaded file
+                'mimetypes:video/mp4,video/quicktime,video/x-msvideo,video/x-ms-wmv,application/octet-stream', // Checks the content type
+                'max:51200', // 50MB limit
+            ],
             'project_type_id' => 'sometimes|required|exists:project_types,id',
         ]);
         set_time_limit(300);

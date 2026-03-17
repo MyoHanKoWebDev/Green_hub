@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ProjectType;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 class ProjectTypeController extends Controller
 {
@@ -22,7 +23,7 @@ class ProjectTypeController extends Controller
         $request->merge(['typeName' => $cleanName]);
 
         $validator = Validator::make($request->all(), [
-            'typeName' => 'required|string|unique:project_types,typeName',
+            'typeName' => 'required|string|unique:project_types,typeName,NULL,id,deleted_at,NULL',
             'shareDate' => 'nullable|date'
         ]);
 
@@ -47,7 +48,12 @@ class ProjectTypeController extends Controller
         $request->merge(['typeName' => $cleanName]);
 
         $validator = Validator::make($request->all(), [
-            'typeName' => 'required|string|unique:project_types,typeName,' . $id
+            'typeName' => [
+                'sometimes',
+                'required',
+                'string',
+                Rule::unique('project_types')->ignore($id)->whereNull('deleted_at'),
+            ]
         ]);
 
         if ($validator->fails()) {

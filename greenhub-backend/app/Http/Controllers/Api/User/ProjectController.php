@@ -11,7 +11,7 @@ class ProjectController extends Controller
     public function getMemberProjects()
     {
         // Simply filter by the role column
-        $projects = EcoProject::where('role', 'member')->get();
+        $projects = EcoProject::where('role', 'member')->orderBy('id', 'desc')->get();
 
         return response()->json([
             'status' => true,
