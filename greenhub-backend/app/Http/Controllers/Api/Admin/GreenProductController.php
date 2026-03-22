@@ -14,17 +14,33 @@ use Illuminate\Support\Facades\DB;
 
 class GreenProductController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
+        $search = $request->query('search');
+        $projectId = $request->query('project_id');
+        
         $products = GreenProduct::where('stock_qty', '>', 0)
-            ->withCount('ratings')
-            ->withAvg('ratings', 'rating')
-            ->get();
+        ->with(['ecoProjects' => function($query) {
+            $query->select('eco_projects.id', 'title'); // Get only what you need
+        }])
+        ->when($search, function ($query, $search) {
+            return $query->where('productName', 'LIKE', "%{$search}%")
+                         ->orWhere('description', 'LIKE', "%{$search}%");
+        })
+        ->when($projectId, function ($query, $projectId) {
+            return $query->whereHas('ecoProjects', function($q) use ($projectId) {
+                $q->where('eco_projects.id', $projectId);
+            });
+        })
+        ->withCount('ratings')
+        ->withAvg('ratings', 'rating')
+        ->orderBy('id', 'desc')
+        ->get();
 
-        return response()->json([
-            'status' => true,
-            'data' => $products
-        ]);
+    return response()->json([
+        'status' => true,
+        'data' => $products
+    ]);
     }
 
     public function show($id)
@@ -33,43 +49,6 @@ class GreenProductController extends Controller
         $products = GreenProduct::where('id', $id)->get();
         return response()->json(['status' => true, 'data' => $products]);
     }
-
-    // public function store(Request $request)
-    // {
-    //     $validator = Validator::make($request->all(), [
-    //         'productName' => 'required|string|max:255',
-    //         'description' => 'required|string',
-    //         'price'       => 'required|numeric',
-    //         'image'       => 'required|image|mimes:jpeg,png,jpg,webp|max:2048',
-    //         'stock_qty'   => 'required|integer'
-    //     ]);
-
-    //     if ($validator->fails()) {
-    //         return response()->json(['status' => false, 'errors' => $validator->errors()], 422);
-    //     }
-
-    //     $imageName = null;
-    //     if ($request->hasFile('image')) {
-    //         // Stores in storage/app/public/products
-    //         $imageName = time() . '_' . $request->file('image')->getClientOriginalName();
-
-    //         // Move to public/uploads/profiles inside your Laravel project
-    //         $request->file('image')->move(
-    //             public_path('uploads/admin'),
-    //             $imageName
-    //         );
-    //     }
-
-    //     $product = GreenProduct::create([
-    //         'productName' => $request->productName,
-    //         'description' => $request->description,
-    //         'price'       => $request->price,
-    //         'image'       => $imageName,
-    //         'stock_qty'   => $request->stock_qty,
-    //     ]);
-
-    //     return response()->json(['status' => true, 'message' => 'Green Product added!', 'data' => $product], 201);
-    // }
 
     public function store(Request $request)
     {
@@ -182,16 +161,16 @@ class GreenProductController extends Controller
         $product = GreenProduct::find($id);
         if (!$product) return response()->json(['message' => 'Not found'], 404);
 
-        // if ($product->image) {
-        //     $oldPath = public_path('uploads/admin/' . $product->image);
-        //     if (file_exists($oldPath)) {
-        //         unlink($oldPath);
-        //     }
-        // }
-        // Security: Don't delete if there are purchase details (history)
-        // if ($product->purchaseDetails()->exists()) {
-        //     return response()->json(['message' => 'Product has history, cannot delete. Set stock to 0 instead.'], 400);
-        // }
+        if ($product->image) {
+            $oldPath = public_path('uploads/admin/' . $product->image);
+            if (file_exists($oldPath)) {
+                unlink($oldPath);
+            }
+        }
+        //Security: Don't delete if there are purchase details (history)
+        if ($product->purchaseDetails()->exists()) {
+            return response()->json(['message' => 'Product has history, cannot delete. Set stock to 0 instead.'], 400);
+        }
 
         $product->delete();
         return response()->json(['status' => true, 'message' => 'Moved to trash'], 200);

@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\User\AuthController;
 use App\Http\Controllers\Api\Admin\PaymentController;
 use App\Http\Controllers\Api\Admin\ProjectTypeController;
 use App\Http\Controllers\Api\User\CommentController;
+use App\Http\Controllers\Api\User\OrderController;
 use App\Http\Controllers\Api\User\PostController;
 use App\Http\Controllers\Api\User\ProjectController;
 use Illuminate\Http\Request;
@@ -62,6 +63,13 @@ Route::prefix('user')->group(function () {
     Route::controller(CommentController::class)->prefix('comments')->group(function () {
         Route::post('/', 'store');
         Route::delete('/{id}', 'destroy');
+    });
+
+    Route::controller(OrderController::class)->prefix('orders')->group(function () {
+        Route::get('/', 'index');
+        Route::post('/', 'checkout');
+        Route::post('/{id}/confirm', [OrderController::class, 'confirmOrder']);
+        Route::post('/{id}/reject', [OrderController::class, 'rejectOrder']);
     });
 });
 

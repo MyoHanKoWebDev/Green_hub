@@ -34,4 +34,10 @@ class GreenProduct extends Model
     {
         return $this->hasMany(ProductProject::class, 'product_id');
     }
+
+    public function ecoProjects()
+    {
+        return $this->belongsToMany(EcoProject::class, 'product_projects', 'product_id', 'project_id')
+            ->withPivot('sharedDate');
+    }
 }

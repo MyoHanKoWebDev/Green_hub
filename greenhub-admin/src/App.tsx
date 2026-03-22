@@ -19,6 +19,10 @@ import AppLayout from "./layout/AppLayout";
 import { ScrollToTop } from "./components/common/ScrollToTop";
 import Home from "./pages/Dashboard/Home";
 import Payment from "./pages/Payments/Payment";
+import ProjectType from "./pages/ProjectTypes/ProjectType";
+import Project from "./pages/Project/Project";
+import Product from "./pages/Product/Product";
+import Orders from "./pages/Orders/Orders";
 
 export default function App() {
   return (
@@ -41,6 +45,10 @@ export default function App() {
             {/* Tables */}
             <Route path="/basic-tables" element={<BasicTables />} />
 
+            <Route path="/orders" element={<Orders />} />
+            <Route path="/products" element={<Product />} />
+            <Route path="/projects" element={<Project />} />
+            <Route path="/projectType" element={<ProjectType />} />
             <Route path="/payment" element={<Payment />} />
 
             {/* Ui Elements */}

@@ -1,16 +1,25 @@
 import { motion } from "framer-motion";
+import { TableCell, TableRow, TableBody } from "../ui/table";
 
 export default function TableSkeleton() {
   return (
-    <motion.div
-      initial={{ opacity: 0.5 }}
-      animate={{ opacity: 1 }}
-      transition={{ repeat: Infinity, duration: 1, repeatType: "reverse" }}
-      className="w-full space-y-4"
-    >
+    <TableBody>
       {[1, 2, 3].map((i) => (
-        <div key={i} className="h-14 w-full bg-gray-100 dark:bg-gray-800 rounded-lg animate-pulse" />
+        <TableRow key={i} className="border-none">
+          <TableCell colSpan={7} className="p-2">
+            <motion.div
+              initial={{ opacity: 0.4 }}
+              animate={{ opacity: 1 }}
+              transition={{
+                repeat: Infinity,
+                duration: 1.5,
+                repeatType: "reverse",
+              }}
+              className="h-11 w-full bg-gray-200/70 dark:bg-white/5 rounded-lg"
+            />
+          </TableCell>
+        </TableRow>
       ))}
-    </motion.div>
+    </TableBody>
   );
 }

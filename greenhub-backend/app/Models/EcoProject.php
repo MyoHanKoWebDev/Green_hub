@@ -26,4 +26,9 @@ class EcoProject extends Model
     {
         return $this->hasMany(ProductProject::class, 'project_id');
     }
+
+    public function products()
+    {
+        return $this->belongsToMany(GreenProduct::class, 'product_projects', 'project_id', 'product_id');
+    }
 }

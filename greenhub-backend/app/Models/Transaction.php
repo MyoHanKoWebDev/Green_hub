@@ -9,6 +9,14 @@ class Transaction extends Model
 {
     use HasFactory;
 
+    protected $fillable = [
+        'tran_no',
+        'payment_proof_img',
+        'tranDate',
+        'payment_id',
+        'purchase_id'
+    ];
+
     public function purchase()
     {
         return $this->belongsTo(Purchase::class);

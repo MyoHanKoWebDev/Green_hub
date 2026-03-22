@@ -55,32 +55,22 @@ const navItems: NavItem[] = [
   {
     name: "Orders",
     icon: <ClipboardDocumentListIcon className="w-5 h-5" />,
-    subItems: [{ name: "Form Elements", path: "/form-elements", pro: false }],
-  },
-  {
-    name: "Posts",
-    icon: <NewspaperIcon className="w-5 h-5" />,
-    subItems: [{ name: "Basic Tables", path: "/basic-tables", pro: false }],
+    subItems: [{ name: "Manage Orders", path: "/orders", pro: false }],
   },
   {
     name: "Products",
     icon: <CubeIcon className="w-5 h-5" />,
-    subItems: [{ name: "Basic Tables", path: "/basic-tables", pro: false }],
+    subItems: [{ name: "Manage Products", path: "/products", pro: false }],
   },
   {
-    name: "Product Projects",
+    name: "Eco Projects",
     icon: <RectangleGroupIcon className="w-5 h-5" />,
-    subItems: [{ name: "Basic Tables", path: "/basic-tables", pro: false }],
-  },
-  {
-    name: "Product Category",
-    icon: <TagIcon className="w-5 h-5" />,
-    subItems: [{ name: "Basic Tables", path: "/basic-tables", pro: false }],
+    subItems: [{ name: "Manage Projects", path: "/projects", pro: false }],
   },
   {
     name: "Project Type",
     icon: <Squares2X2Icon className="w-5 h-5" />,
-    subItems: [{ name: "Basic Tables", path: "/basic-tables", pro: false }],
+    subItems: [{ name: "Manage ProjectType", path: "/projectType", pro: false }],
   },
   {
     name: "Payment",

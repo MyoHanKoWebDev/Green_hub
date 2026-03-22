@@ -7,7 +7,10 @@ use App\Models\Comment;
 use App\Models\Post;
 use App\Models\React;
 use App\Models\SavedPost;
+use App\Services\ModerationService;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 
@@ -34,7 +37,7 @@ class PostController extends Controller
         ], 200);
     }
 
-    public function store(Request $request)
+    public function store(Request $request, ModerationService $moderator)
     {
         $validator = Validator::make($request->all(), [
             'content' => 'required|string',
@@ -46,10 +49,26 @@ class PostController extends Controller
             return response()->json(['status' => false, 'errors' => $validator->errors()], 422);
         }
 
+        if (!$moderator->isClean($request->content)) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Prohibited content detected.'
+            ], 403);
+        }
+
+        // --- REPOST PREVENTION (Cache for 1 minute) ---
+        $cacheKey = 'last_post_' . $request->member_id;
+        if (Cache::has($cacheKey) && Cache::get($cacheKey) === md5($request->content)) {
+            return response()->json([
+                'status' => false,
+                'message' => 'You recently posted this content. Please wait a moment.'
+            ], 429);
+        }
+
         $imagePaths = [];
 
         // Start the Transaction
-        return DB::transaction(function () use ($request, &$imagePaths) {
+        return DB::transaction(function () use ($request, &$imagePaths, $cacheKey) {
             if ($request->hasFile('images')) {
                 foreach ($request->file('images') as $file) {
                     $name = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
@@ -65,11 +84,13 @@ class PostController extends Controller
                 'member_id' => $request->member_id,
             ]);
 
+            Cache::put($cacheKey, md5($request->content), now()->addMinutes(1));
+
             return response()->json(['status' => true, 'message' => 'Green Product added!', 'data' => $post], 201);
         });
     }
 
-    public function update(Request $request, $id)
+    public function update(Request $request, $id, ModerationService $moderator)
     {
         $post = Post::findOrFail($id);
 
@@ -81,6 +102,13 @@ class PostController extends Controller
 
         if ($validator->fails()) {
             return response()->json(['status' => false, 'errors' => $validator->errors()], 422);
+        }
+
+        if ($request->has('content') && !$moderator->isClean($request->content)) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Updated content contains prohibited words.'
+            ], 403);
         }
 
         return DB::transaction(function () use ($request, $post) {

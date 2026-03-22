@@ -15,7 +15,7 @@ const Signup = () => {
 
   const nameRef = useRef();
   const emailRef = useRef();
-  const addressRef = useRef();
+  //const addressRef = useRef();
   const passwordRef = useRef();
   const confirmPasswordRef = useRef();
   const imageRef = useRef();
@@ -36,7 +36,7 @@ const Signup = () => {
     const data = new FormData();
     data.append("name", nameRef.current.value);
     data.append("email", emailRef.current.value);
-    data.append("address", addressRef.current.value);
+    // data.append("address", addressRef.current.value);
     data.append("password", passwordRef.current.value);
     data.append("password_confirmation", confirmPasswordRef.current.value);
 
@@ -157,7 +157,7 @@ const Signup = () => {
               </div>
             </div>
 
-            <div>
+            {/* <div>
               <label className="block text-sm/6 font-medium text-gray-900">
                 Address
               </label>
@@ -172,7 +172,7 @@ const Signup = () => {
                   <p className="text-xs text-red-500 mt-1">{errors.address[0]}</p>
                 )}
               </div>
-            </div>
+            </div> */}
 
             <div>
               <div className="flex items-center justify-between">

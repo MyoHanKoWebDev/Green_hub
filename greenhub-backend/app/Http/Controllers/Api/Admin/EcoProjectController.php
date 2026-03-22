@@ -158,10 +158,25 @@ class EcoProjectController extends Controller
 
     public function destroy($id)
     {
-        $project = EcoProject::find($id);
+        $project = EcoProject::withCount('products')->findOrFail($id);
 
         if (!$project) {
             return response()->json(['message' => 'Project not found'], 404);
+        }
+
+
+
+        if ($project->products_count > 0) {
+            return response()->json([
+                'status' => false,
+                'message' => "Cannot delete. This project is being used by active products!"
+            ], 400);
+        }
+        if ($project->video) {
+            $oldPath = public_path('uploads/videos/' . $project->video);
+            if (file_exists($oldPath)) {
+                unlink($oldPath);
+            }
         }
 
         $project->delete();

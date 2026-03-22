@@ -13,7 +13,7 @@ class ProjectTypeController extends Controller
     public function index()
     {
         // Get all active project types
-        $types = ProjectType::all();
+        $types = ProjectType::orderBy('id', 'desc')->get();
         return response()->json(['status' => true, 'data' => $types]);
     }
 

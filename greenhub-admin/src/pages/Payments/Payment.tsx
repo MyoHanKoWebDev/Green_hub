@@ -1,6 +1,6 @@
 import React from 'react'
 import PageMeta from "../../components/common/PageMeta";
-import ViewPayment from '../../components/tables/BasicTables/ViewPyament';
+import ViewPayment from '../../components/payment/ViewPyament';
 
 const Payment = () => {
   return (

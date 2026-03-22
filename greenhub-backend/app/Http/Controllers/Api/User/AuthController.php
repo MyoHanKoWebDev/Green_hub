@@ -50,7 +50,6 @@ class AuthController extends Controller
                 'max:255',
                 'unique:users'
             ],
-            'address' => ['required', 'string', 'max:500'],
             'password' => [
                 'required',
                 'string',
@@ -101,7 +100,6 @@ class AuthController extends Controller
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
-            'address' => $request->address,
             'password' => $hashedPassword,
             'proImg' => $imageName,
             'joinDate' => now()
@@ -125,7 +123,6 @@ class AuthController extends Controller
         // 1. Validation (Email and Password usually handled in separate functions)
         $validator = Validator::make($request->all(), [
             'name' => ['string', 'max:255', 'regex:/^[A-Za-z\s]+$/'],
-            'address' => ['string', 'max:500'],
             'proImg' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:2048']
         ]);
 
@@ -151,7 +148,7 @@ class AuthController extends Controller
                 $user->proImg = $imageName;
             }
 
-            $user->fill($request->only(['name', 'address']));
+            $user->fill($request->only(['name']));
 
             $user->save();
 
@@ -207,7 +204,7 @@ class AuthController extends Controller
             'token' => $token,
             'user' => $user
         ], 200);
-    } 
+    }
 
     public function changePassword(Request $request, $id)
     {
@@ -284,7 +281,6 @@ class AuthController extends Controller
             $user = User::create([
                 'email' => $googleUser['email'],
                 'name' => $googleUser['name'],
-                'address' => null,
                 'proImg' => $googleUser['picture'],
                 // Use your CUSTOM hashing function here to be consistent!
                 'password' => $this->myCustomHasher(Str::random(24)),

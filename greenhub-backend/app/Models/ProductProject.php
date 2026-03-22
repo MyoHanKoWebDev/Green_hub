@@ -17,7 +17,7 @@ class ProductProject extends Model
 
     public function greenProduct()
     {
-        return $this->belongsTo(GreenProduct::class);
+        return $this->belongsTo(GreenProduct::class, 'product_id');
     }
 
     public function ecoProject()
