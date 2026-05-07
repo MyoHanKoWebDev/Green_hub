@@ -22,6 +22,7 @@ import toast from "react-hot-toast";
 import { formatDate } from "../../utils/helper.js";
 import OrderDetailsModal from "./OrderModal.js";
 import { ConfirmOrderModal } from "../common/ConfirmOrderModa.js";
+import { useLocation } from "react-router";
 
 interface OrderData {
   id: number;
@@ -41,6 +42,7 @@ interface OrderData {
 }
 
 export default function ViewOrder() {
+  const loaction = useLocation()
   const [orders, setOrders] = useState<OrderData[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -64,6 +66,7 @@ export default function ViewOrder() {
 
   const fetchOrders = async () => {
     try {
+      setLoading(true);
       const res = await axios.get("/user/orders", {
         params: { search: searchTerm, status: filterStatus },
       });
@@ -85,7 +88,7 @@ export default function ViewOrder() {
   useEffect(() => {
     const timer = setTimeout(() => fetchOrders(), 300);
     return () => clearTimeout(timer);
-  }, [searchTerm, filterStatus]);
+  }, [searchTerm, filterStatus, location.state]);
 
   const openActionConfirm = (id: number, type: "confirm" | "reject") => {
     setActionConfig({ id, type });
@@ -122,14 +125,24 @@ export default function ViewOrder() {
   };
 
   useEffect(() => {
-      if (alertConfig) {
-        const timer = setTimeout(() => {
-          setAlertConfig(null);
-        }, 4000); // Hide after 5 seconds
-        return () => clearTimeout(timer);
-      }
-    }, [alertConfig]);
-    
+    if (alertConfig) {
+      const timer = setTimeout(() => {
+        setAlertConfig(null);
+      }, 4000); // Hide after 5 seconds
+      return () => clearTimeout(timer);
+    }
+  }, [alertConfig]);
+
+  const getImageUrl = (img: string) => {
+    // If it's a Google URL (starts with http or https)
+    if (img.startsWith("http")) {
+      return img;
+    }
+
+    // If it's a local upload from your Laravel 'public/uploads/profiles' folder
+    return `http://localhost:8000/uploads/profiles/${img}`;
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col md:flex-row items-center justify-between mb-6 gap-4">
@@ -142,13 +155,13 @@ export default function ViewOrder() {
             <input
               type="text"
               placeholder="Search customer..."
-              className="pl-10 pr-4 py-2 w-full rounded-lg border border-gray-200 dark:border-white/[0.1] dark:bg-white/[0.03] outline-none text-sm"
+              className="pl-10 pr-4 py-3 w-full rounded-lg border border-gray-200 bg-transparent py-2.5 pl-12 pr-4 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-none dark:border-gray-800 dark:bg-gray-900 dark:text-white/90 xl:w-[250px]"
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
 
           <select
-            className="py-2 px-4 rounded-lg border border-gray-200 dark:border-white/[0.1] dark:bg-white/[0.03] outline-none text-sm"
+            className="py-3 px-4 rounded-lg border border-gray-200 bg-transparent px-4 text-sm text-gray-800 focus:border-brand-300 focus:outline-none dark:border-gray-800 dark:bg-gray-900 dark:text-white/90 min-w-[160px]"
             onChange={(e) => setFilterStatus(e.target.value)}
           >
             <option value="all">All Status</option>
@@ -165,16 +178,28 @@ export default function ViewOrder() {
           <Table>
             <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
               <TableRow>
-                <TableCell isHeader className="px-5 py-3 text-start">
+                <TableCell
+                  isHeader
+                  className="px-5 py-3 text-start dark:text-gray-400"
+                >
                   Customer
                 </TableCell>
-                <TableCell isHeader className="px-5 py-3 text-start">
+                <TableCell
+                  isHeader
+                  className="px-5 py-3 text-start dark:text-gray-400"
+                >
                   Date
                 </TableCell>
-                <TableCell isHeader className="px-5 py-3 text-start">
+                <TableCell
+                  isHeader
+                  className="px-5 py-3 text-start dark:text-gray-400"
+                >
                   Status
                 </TableCell>
-                <TableCell isHeader className="px-5 py-3 text-end">
+                <TableCell
+                  isHeader
+                  className="px-5 py-3 text-end dark:text-gray-400"
+                >
                   Actions
                 </TableCell>
               </TableRow>
@@ -192,8 +217,9 @@ export default function ViewOrder() {
                             <div className="w-9 h-9 rounded-full bg-gray-100 overflow-hidden">
                               {order.user?.proImg ? (
                                 <img
-                                  src={`http://localhost:8000/uploads/profiles/${order.user.proImg}`}
+                                  src={getImageUrl(order.user.proImg)}
                                   alt={order.user.proImg}
+                                  className="w-full h-full object-cover"
                                 />
                               ) : (
                                 <div className="flex items-center justify-center h-full font-bold text-gray-400">
@@ -224,33 +250,52 @@ export default function ViewOrder() {
                         </TableCell>
                         <TableCell className="px-5 py-4 text-end">
                           <div className="flex justify-end gap-2">
-                            <button
-                              onClick={() => {
-                                setSelectedOrder(order);
-                                setIsDetailsOpen(true);
-                              }}
-                              className="p-1.5 text-gray-500 hover:text-brand-500"
-                            >
-                              <EyeIcon className="w-4 h-4" />
-                            </button>
+                            {/* VIEW DETAILS - Independent Group */}
+                            <div className="relative group/view">
+                              <button
+                                onClick={() => {
+                                  setSelectedOrder(order);
+                                  setIsDetailsOpen(true);
+                                }}
+                                className="p-1.5 text-gray-500 hover:text-brand-500 hover:bg-gray-100 rounded-lg transition-colors"
+                              >
+                                <EyeIcon className="w-4 h-4" />
+                              </button>
+                              {/* Tooltip triggers ONLY when group/view is hovered */}
+                              <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 pointer-events-none opacity-0 group-hover/view:opacity-100 transition-opacity w-max bg-gray-900 text-white text-[10px] py-1 px-2 rounded shadow-xl z-50">
+                                View Details
+                              </span>
+                            </div>
                             {order.status === "pending" && (
                               <>
-                                <button
-                                  onClick={() =>
-                                    openActionConfirm(order.id, "confirm")
-                                  }
-                                  className="p-1.5 text-gray-400 hover:text-emerald-600"
-                                >
-                                  <CheckIcon className="w-4 h-4" />
-                                </button>
-                                <button
-                                  onClick={() =>
-                                    openActionConfirm(order.id, "reject")
-                                  }
-                                  className="p-1.5 text-gray-400 hover:text-rose-600"
-                                >
-                                  <XMarkIcon className="w-4 h-4" />
-                                </button>
+                                {/* CONFIRM ORDER - Independent Group */}
+                                <div className="relative group/confirm">
+                                  <button
+                                    onClick={() =>
+                                      openActionConfirm(order.id, "confirm")
+                                    }
+                                    className="p-1.5 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                                  >
+                                    <CheckIcon className="w-4 h-4" />
+                                  </button>
+                                  <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 pointer-events-none opacity-0 group-hover/confirm:opacity-100 transition-opacity w-max bg-emerald-600 text-white text-[10px] py-1 px-2 rounded shadow-xl z-50">
+                                    Confirm Order
+                                  </span>
+                                </div>
+                                {/* REJECT ORDER - Independent Group */}
+                                <div className="relative group/reject">
+                                  <button
+                                    onClick={() =>
+                                      openActionConfirm(order.id, "reject")
+                                    }
+                                    className="p-1.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                                  >
+                                    <XMarkIcon className="w-4 h-4" />
+                                  </button>
+                                  <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 pointer-events-none opacity-0 group-hover/reject:opacity-100 transition-opacity w-max bg-rose-600 text-white text-[10px] py-1 px-2 rounded shadow-xl z-50">
+                                    Reject Order
+                                  </span>
+                                </div>
                               </>
                             )}
                           </div>

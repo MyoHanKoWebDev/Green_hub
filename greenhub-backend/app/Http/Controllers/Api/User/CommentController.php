@@ -11,6 +11,19 @@ use Illuminate\Support\Facades\Validator;
 
 class CommentController extends Controller
 {
+    public function index($postId)
+    {
+        $comments = Comment::where('post_id', $postId)
+            ->with('user') // So we see who commented
+            ->latest() // Show original comment first, then replies below
+            ->get();
+
+        return response()->json([
+            'status' => true,
+            'data' => $comments
+        ]);
+    }
+
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -31,10 +44,10 @@ class CommentController extends Controller
                 'member_id' => $request->member_id,
             ]);
 
-            // Load the user who commented so the frontend can show their name/profile image
             return response()->json([
                 'status' => true,
-                'data' => $comment->load('user')
+                'data' => $comment->load('user'),
+                'comments_count' => Comment::where('post_id', $request->post_id)->count()
             ], 201);
         });
     }

@@ -8,7 +8,7 @@ return [
     */
     'banned_keywords' => [
         // 1. Common Profanity & Hate Speech
-    'sh*t', 'f*ck', 'b*tch', 'a**hole', // Use real words in your code
+    'shit', 'fuck', 'bitch', 'asshole', // Use real words in your code
 
     // 2. Spam & Scam Keywords
     'crypto profit', 'free bitcoin', 'cash prize', 'win money', 'click here',

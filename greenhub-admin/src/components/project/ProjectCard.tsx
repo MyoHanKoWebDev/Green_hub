@@ -28,7 +28,6 @@ export default function ProjectCard({
 }: ProjectCardProps){
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [progress, setProgress] = useState(0);
 
   const togglePlay = () => {
     const video = videoRef.current; 
@@ -44,17 +43,11 @@ export default function ProjectCard({
   }
   };
 
-  const handleTimeUpdate = () => {
+ const handlePlay = () => {
     if (videoRef.current) {
-      setProgress(
-        (videoRef.current.currentTime / videoRef.current.duration) * 100,
-      );
+      videoRef.current.play();
+      setIsPlaying(true);
     }
-  };
-
-  const handleEnded = () => {
-    setIsPlaying(false);
-    setProgress(0);
   };
 
   return (
@@ -122,32 +115,32 @@ export default function ProjectCard({
         {project.video ? (
           <>
             <video
-              ref={videoRef}
-              onTimeUpdate={handleTimeUpdate}
-              onEnded={handleEnded}
-              src={`http://localhost:8000/uploads/videos/${project.video}`}
-              className="w-full h-full object-cover"
-            />
+                      ref={videoRef}
+                      className="w-full h-full object-cover"
+                      onPlay={() => setIsPlaying(true)}
+                      onPause={() => setIsPlaying(false)}
+                      controls={isPlaying} // Only show browser controls AFTER it starts playing
+                    >
+                      <source
+                        src={`http://localhost:8000/uploads/videos/${project.video}`}
+                        type="video/mp4"
+                      />
+                    </video>
 
-            {/* Play/Pause Center Overlay */}
             {!isPlaying && (
-              <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/40 transition-all">
-                <div className="bg-white/10 p-4 rounded-full backdrop-blur-md">
-                  <PlayIcon className="w-8 h-8 text-white" />
-                </div>
-              </div>
-            )}
+                      <div
+                        onClick={handlePlay}
+                        className="absolute inset-0 bg-gray-950/40 flex items-center justify-center cursor-pointer transition-opacity hover:bg-gray-950/20"
+                      >
+                        <div className="flex flex-col items-center gap-2">
+                          <PlayIcon className="h-16 w-16 text-white bg-white/20 p-4 rounded-full border border-white/50 backdrop-blur-sm" />
+                          <span className="text-white text-xs font-bold uppercase tracking-widest">
+                            Play Project Video
+                          </span>
+                        </div>
+                      </div>
+                    )}
 
-            {/* Custom Control Bar (Line showing progress) */}
-            <div className="absolute bottom-0 left-0 w-full h-1.5 bg-white/20">
-              <div
-                className="h-full bg-brand-500 transition-all duration-150 ease-linear relative"
-                style={{ width: `${progress}%` }}
-              >
-                {/* Visual "knob" at the end of progress */}
-                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-brand-500 rounded-full shadow-lg scale-0 group-hover:scale-100 transition-transform" />
-              </div>
-            </div>
 
             {/* Playing Status Indicator (Top Right) */}
             {isPlaying && (

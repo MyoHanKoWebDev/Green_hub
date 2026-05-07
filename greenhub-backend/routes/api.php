@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\Admin\AdminController;
 use App\Http\Controllers\Api\Admin\EcoProjectController;
 use App\Http\Controllers\Api\Admin\GreenProductController;
 use App\Http\Controllers\Api\User\AuthController;
@@ -9,9 +10,11 @@ use App\Http\Controllers\Api\User\CommentController;
 use App\Http\Controllers\Api\User\OrderController;
 use App\Http\Controllers\Api\User\PostController;
 use App\Http\Controllers\Api\User\ProjectController;
+use App\Models\Purchase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use PhpParser\Comment;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 /*
 |--------------------------------------------------------------------------
@@ -23,6 +26,14 @@ use PhpParser\Comment;
 | is assigned the "api" middleware group. Enjoy building your API!
 |
 */
+Route::get('/orders/voucher/{id}', function ($id) {
+    $purchase = Purchase::with(['purchaseDetails.greenProduct', 'user'])->findOrFail($id);
+
+    // We will create this view next
+    $pdf = Pdf::loadView('pdf.voucher', compact('purchase'));
+
+    return $pdf->download("GreenHub_Voucher_#{$id}.pdf");
+});
 
 Route::prefix('user')->group(function () {
     Route::controller(AuthController::class)->group(function () {
@@ -52,6 +63,7 @@ Route::prefix('user')->group(function () {
 
     Route::controller(PostController::class)->prefix('posts')->group(function () {
         Route::get('/', 'index');
+        Route::get('/green-heroes', 'getGreenHeroes');
         Route::get('/{id}', 'show');
         Route::post('/', 'store');
         Route::post('/toggleReact', 'toggleReact');
@@ -61,6 +73,7 @@ Route::prefix('user')->group(function () {
     });
 
     Route::controller(CommentController::class)->prefix('comments')->group(function () {
+        Route::get('/{postId}', 'index');
         Route::post('/', 'store');
         Route::delete('/{id}', 'destroy');
     });
@@ -106,6 +119,12 @@ Route::prefix('admin')->group(function () {
         Route::post('/storeMember', 'storeMember');
         Route::put('/{id}', 'update');
         Route::delete('/{id}', 'destroy');
+    });
+
+    Route::controller(AdminController::class)->prefix('profile')->group(function () {
+        Route::put('/{id}', 'update');
+        Route::post('/login', 'login');
+        Route::put('/change-password/{id}', 'changePassword');
     });
 });
 

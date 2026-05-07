@@ -294,21 +294,23 @@ export default function ViewProduct() {
 
                           {/* Price */}
                           <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                            ${Number(product.price).toFixed(2)}
+                            {product.price ? Number(product.price).toLocaleString('en-US') : "0"} Ks
                           </TableCell>
 
                           {/* Stock Status */}
-                          <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                            <span
-                              className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
-                                product.stock_qty > 5
-                                  ? "bg-green-50 text-green-700"
-                                  : "bg-red-50 text-red-700"
-                              }`}
-                            >
-                              {product.stock_qty} units
-                            </span>
-                          </TableCell>
+                         <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+  <span
+    className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
+      product.stock_qty === 0
+        ? "bg-gray-100 text-gray-600 border border-gray-200" // Out of Stock
+        : product.stock_qty > 5
+        ? "bg-green-50 text-green-700"                     // In Stock
+        : "bg-red-50 text-red-700"                        // Low Stock
+    }`}
+  >
+    {product.stock_qty === 0 ? "Out of Stock" : `${product.stock_qty} units`}
+  </span>
+</TableCell>
 
                           {/* Description with "See More" */}
                           <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">

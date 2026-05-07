@@ -5,12 +5,14 @@ const AuthContext = createContext();
 export const AuthProvider = ({children}) => {
     const [user , setUser] = useState(null);
     const [token, setToken] = useState(localStorage.getItem('token') || null);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const savedUser = localStorage.getItem('user');
         if (savedUser) {
             setUser(JSON.parse(savedUser));
         }
+        setLoading(false);
     }, [])
 
     // Function to handle login
@@ -26,11 +28,11 @@ export const AuthProvider = ({children}) => {
         setUser(null);
         setToken(null);
         localStorage.removeItem('token');
-        localStorage.removeItem('user');
+        localStorage.removeItem('user');        
     };
 
     return (
-        <AuthContext.Provider value={{user, token, login, logout, setUser}}>
+        <AuthContext.Provider value={{user, token, login, logout, setUser, loading}}>
             {children}
         </AuthContext.Provider>
     )

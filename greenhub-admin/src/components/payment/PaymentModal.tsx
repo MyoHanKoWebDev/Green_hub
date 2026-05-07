@@ -128,8 +128,8 @@ export default function PaymentModal({ isOpen, onClose, onSuccess, selectedPayme
           </div>
 
           <div className="flex gap-3 pt-4">
-            <Button size="sm" variant="outline" className="flex-1" type="button" onClick={onClose} disabled={loading}>Close</Button>
-            <Button size="sm" type="submit" className="flex-1" disabled={loading}>
+            <Button size="sm" variant="outline" type="button" onClick={onClose} disabled={loading}>Close</Button>
+            <Button size="sm" type="submit" disabled={loading}>
               {loading ? "Processing..." : selectedPayment ? "Update Method": "Save Method"}
             </Button>
           </div>

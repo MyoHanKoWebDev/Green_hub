@@ -16,6 +16,9 @@ import Signup from "../pages/Signup";
 import ForgotPassword from "../pages/ForgotPassword";
 import VerifyOtp from "../pages/VerifyOtp";
 import ResetPassword from "../pages/ResetPassword";
+import ProductDetail from "../pages/ProductDetail";
+import Checkout from "../pages/Checkout";
+import ProtectedRoute from "../components/ProtectRout";
 
 const Router = () => {
   const router = createBrowserRouter([
@@ -32,12 +35,21 @@ const Router = () => {
           element: <Product />,
         },
         {
+          path: "/products/:id",
+          element: <ProductDetail />,
+        },
+        {
           path: "/posts",
           element: <Posts />,
         },
         {
           path: "/projects",
           element: <Projects />,
+        },
+
+        {
+          path: "/checkout",
+          element: <Checkout />,
         },
         {
           path: "/about",
@@ -50,25 +62,25 @@ const Router = () => {
       ],
     },
     {
-      path: '/signin',
-      element: <Signin />
+      path: "/signin",
+      element: <Signin />,
     },
     {
-      path: '/signup',
-      element: <Signup />
+      path: "/signup",
+      element: <Signup />,
     },
     {
-      path: '/forgot-password',
-      element: <ForgotPassword />
+      path: "/forgot-password",
+      element: <ForgotPassword />,
     },
     {
-      path: '/verify-otp',
-      element: <VerifyOtp />
+      path: "/verify-otp",
+      element: <VerifyOtp />,
     },
     {
-      path: '/reset-password',
-      element: <ResetPassword />
-    }
+      path: "/reset-password",
+      element: <ResetPassword />,
+    },
   ]);
 
   return <RouterProvider router={router} />;

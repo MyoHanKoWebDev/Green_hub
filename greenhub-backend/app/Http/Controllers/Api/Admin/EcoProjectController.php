@@ -165,17 +165,17 @@ class EcoProjectController extends Controller
         }
 
 
-
         if ($project->products_count > 0) {
             return response()->json([
                 'status' => false,
                 'message' => "Cannot delete. This project is being used by active products!"
             ], 400);
-        }
-        if ($project->video) {
-            $oldPath = public_path('uploads/videos/' . $project->video);
-            if (file_exists($oldPath)) {
-                unlink($oldPath);
+        } else {
+            if ($project->video) {
+                $oldPath = public_path('uploads/videos/' . $project->video);
+                if (file_exists($oldPath)) {
+                    unlink($oldPath);
+                }
             }
         }
 

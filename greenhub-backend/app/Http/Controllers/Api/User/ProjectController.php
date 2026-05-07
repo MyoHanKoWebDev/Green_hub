@@ -9,13 +9,16 @@ use Illuminate\Http\Request;
 class ProjectController extends Controller
 {
     public function getMemberProjects()
-    {
-        // Simply filter by the role column
-        $projects = EcoProject::where('role', 'member')->orderBy('id', 'desc')->get();
+{
+    // Eager load memberProjects and the user associated with each one
+    $projects = EcoProject::with(['projectType', 'memberProjects.user'])
+                ->where('role', 'member')
+                ->orderBy('id', 'desc')
+                ->get();
 
-        return response()->json([
-            'status' => true,
-            'data' => $projects
-        ]);
-    }
+    return response()->json([
+        'status' => true,
+        'data' => $projects
+    ]);
+}
 }

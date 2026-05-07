@@ -71,4 +71,10 @@ class User extends Authenticatable
     {
         return $this->hasMany(Purchase::class);
     }
+
+    public function reactsReceived()
+    {
+        // This connects Users to Reacts through their Posts
+        return $this->hasManyThrough(React::class, Post::class, 'member_id', 'post_id');
+    }
 }

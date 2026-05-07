@@ -13,7 +13,8 @@ class Purchase extends Model
         'status',
         'purchaseDate',
         'member_id',
-        'shipping_address'
+        'shipping_address',
+        'phone_number'
     ];
 
      public function user()

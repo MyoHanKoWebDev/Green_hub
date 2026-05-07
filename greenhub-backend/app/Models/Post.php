@@ -29,7 +29,7 @@ class Post extends Model
 
     public function comments()
     {
-        return $this->hasMany(Comment::class, 'member_id');
+        return $this->hasMany(Comment::class, 'post_id');
     }
 
     public function reacts()
@@ -39,6 +39,6 @@ class Post extends Model
 
     public function savedPosts()
     {
-        return $this->hasMany(SavedPost::class);
+        return $this->hasMany(SavedPost::class, 'post_id');
     }
 }

@@ -45,11 +45,6 @@ const Signin = () => {
         navigate("/");
         toast.success(response.data.message || "Welcome back!", {
           duration: 4000,
-          style: {
-            borderRadius: '10px',
-            background: '#333',
-            color: '#fff',
-          },
         });
       }
     } catch (err) {

@@ -17,7 +17,7 @@ class MemberProject extends Model
 
     public function user()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class, 'member_id');
     }
 
     public function ecoProject()

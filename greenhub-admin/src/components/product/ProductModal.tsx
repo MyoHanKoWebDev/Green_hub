@@ -141,14 +141,14 @@ export default function ProductModal({ isOpen, onClose, onSuccess, selectedProdu
           <div>
             <Label>Link to Project</Label>
             <select 
-              className="w-full h-11 px-3 rounded-lg border border-gray-200 dark:border-white/10 dark:bg-white/5 dark:text-white"
+              className="w-full h-11 px-3 rounded-lg border border-gray-200 dark:border-white/10 dark:bg-white/5 dark:text-dark"
               value={projectId}
               onChange={(e) => setProjectId(e.target.value)}
               required
             >
-              <option value="">Select a Project</option>
+              <option value="" >Select a Project</option>
               {projects.map((p) => (
-                <option key={p.id} value={p.id}>{p.title}</option>
+                <option key={p.id} value={p.id}>{p.title} </option>
               ))}
             </select>
           </div>
@@ -156,7 +156,7 @@ export default function ProductModal({ isOpen, onClose, onSuccess, selectedProdu
           {/* Price & Stock in one row */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label>Price ($)</Label>
+              <Label>Price (Ks)</Label>
               <Input type="number" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} required />
             </div>
             <div>
@@ -198,8 +198,8 @@ export default function ProductModal({ isOpen, onClose, onSuccess, selectedProdu
         
 
         <div className="flex gap-3 pt-4">
-          <Button size="sm" variant="outline" className="flex-1" onClick={onClose} disabled={loading} type="button">Cancel</Button>
-          <Button size="sm" type="submit" className="flex-1" disabled={loading}>
+          <Button size="sm" variant="outline" onClick={onClose} disabled={loading} type="button">Cancel</Button>
+          <Button size="sm" type="submit"  disabled={loading}>
             {loading ? "Processing..." : selectedProduct ? "Update Product" : "Save Product"}
           </Button>
         </div>

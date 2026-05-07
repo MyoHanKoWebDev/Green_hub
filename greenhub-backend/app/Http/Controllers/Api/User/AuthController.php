@@ -105,8 +105,9 @@ class AuthController extends Controller
             'joinDate' => now()
         ]);
 
+        $expiresAt = now()->addDays(2);
         // Create Token
-        $token = $user->createToken('auth_token')->plainTextToken;
+        $token = $user->createToken('auth_token', ['*'] , $expiresAt)->plainTextToken;
 
         return response()->json([
             'status' => true,
@@ -194,7 +195,7 @@ class AuthController extends Controller
         }
         // Logic for "Remember Me"
         // If remember is true, we set expiration to 1 year, otherwise 2 hours
-        $expiresAt = $request->remember ? now()->addYear() : now()->addHours(2);
+        $expiresAt = $request->remember ? now()->addYear() : now()->addDays(2);
 
         $token = $user->createToken('auth_token', ['*'], $expiresAt)->plainTextToken;
 

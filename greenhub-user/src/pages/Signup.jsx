@@ -54,11 +54,6 @@ const Signup = () => {
         navigate("/");
         toast.success(response.data.message, {
           duration: 4000,
-          style: {
-            borderRadius: '10px',
-            background: '#333',
-            color: '#fff',
-          },
         });
 
         navigate("/");

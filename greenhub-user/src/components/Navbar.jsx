@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { FaRecycle, FaChevronDown, FaChevronUp, FaUser, FaSignOutAlt } from "react-icons/fa";
 import { useAuth } from "../context/AuthContext"; // Import your hook
+import { useScrollDirection } from "../utils/useScrollDirection";
+import { getImageUrl } from "../utils/getImageUrl";
 
 const Navbar = () => {
   const { user, token, logout } = useAuth(); // Get auth state
@@ -11,6 +13,7 @@ const Navbar = () => {
   const dropdownRef = useRef(null);
   const location = useLocation();
   const navigate = useNavigate();
+  const scrollDir = useScrollDirection();
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -27,28 +30,15 @@ const Navbar = () => {
     logout();
     setProfileOpen(false);
     setIsOpen(false);
-    navigate("/signin");
+    //navigate("/signin");
   };
-
-  const getImageUrl = (img) => {
-  if (!img) {
-    // Fallback if no image exists at all
-    return `https://ui-avatars.com/api/?name=${user?.name || 'User'}&background=84cc16&color=fff`;
-  }
-
-  // If it's a Google URL (starts with http or https)
-  if (img.startsWith("http")) {
-    return img; 
-  }
-
-  // If it's a local upload from your Laravel 'public/uploads/profiles' folder
-  return `${import.meta.env.VITE_BACKEND_URL}/uploads/profiles/${img}`;
-};
 
   return (
     <>
       {/* MAIN NAVBAR */}
-      <header className="flex items-center justify-between px-4 sm:px-10 py-4 sm:py-3 border-b border-slate-200 bg-white sticky top-0 z-50">
+      <header className={`flex items-center justify-between px-4 sm:px-10 py-4 sm:py-3 border-b border-slate-200 bg-white fixed top-0 w-full z-[110] transition-transform duration-300 ${
+      scrollDir === "down" ? "-translate-y-full" : "translate-y-0"
+    }`}>
         <Link to="/" className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-xl bg-lime-500 grid place-content-center">
             <FaRecycle className="w-5 h-5 text-white" />
@@ -120,7 +110,7 @@ const Navbar = () => {
       </header>
 
       {/* MOBILE MENU */}
-      <div className={`lg:hidden bg-white shadow-md flex flex-col px-6 gap-2 text-slate-700 font-medium border-b transition-all duration-300 ease-in-out overflow-hidden ${isOpen ? "max-h-[500px] py-4 opacity-100" : "max-h-0 py-0 opacity-0"}`}>
+      <div className={`lg:hidden bg-white shadow-md flex mt-18 flex-col px-6 gap-2 text-slate-700 font-medium border-b transition-all duration-300 ease-in-out overflow-hidden ${isOpen ? "max-h-[500px] py-4 opacity-100" : "max-h-0 py-0 opacity-0"}`}>
         <Link to="/" onClick={() => setIsOpen(false)} className="px-4 py-2 hover:bg-slate-50 rounded-lg">Home</Link>
         <Link to="/products" onClick={() => setIsOpen(false)} className="px-4 py-2 hover:bg-slate-50 rounded-lg">Products</Link>
         
@@ -139,7 +129,7 @@ const Navbar = () => {
         
         {/* Mobile Logout (If logged in) */}
         {token && (
-          <button onClick={handleLogout} className="mt-4 px-4 py-2 text-left text-red-500 border-t border-slate-100 pt-4">
+          <button onClick={handleLogout} className=" px-4 py-2 text-left text-red-500 border-t border-slate-100 ">
             Logout
           </button>
         )}

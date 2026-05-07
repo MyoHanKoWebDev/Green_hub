@@ -23,6 +23,7 @@ import ProjectType from "./pages/ProjectTypes/ProjectType";
 import Project from "./pages/Project/Project";
 import Product from "./pages/Product/Product";
 import Orders from "./pages/Orders/Orders";
+import ProtectedRoute from "./ProtectedRoute";
 
 export default function App() {
   return (
@@ -30,7 +31,11 @@ export default function App() {
       <Router>
         <ScrollToTop />
         <Routes>
+          {/* Auth Layout */}
+          <Route path="/signin" element={<SignIn />} />
+          <Route path="/signup" element={<SignUp />} />
           {/* Dashboard Layout */}
+          <Route element={<ProtectedRoute />}>
           <Route element={<AppLayout />}>
             <Route index path="/" element={<Home />} />
 
@@ -63,10 +68,7 @@ export default function App() {
             <Route path="/line-chart" element={<LineChart />} />
             <Route path="/bar-chart" element={<BarChart />} />
           </Route>
-
-          {/* Auth Layout */}
-          <Route path="/signin" element={<SignIn />} />
-          <Route path="/signup" element={<SignUp />} />
+          </Route>
 
           {/* Fallback Route */}
           <Route path="*" element={<NotFound />} />

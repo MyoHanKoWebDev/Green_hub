@@ -7,6 +7,7 @@ use App\Models\Comment;
 use App\Models\Post;
 use App\Models\React;
 use App\Models\SavedPost;
+use App\Models\User;
 use App\Services\ModerationService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
@@ -16,13 +17,26 @@ use Illuminate\Support\Facades\Validator;
 
 class PostController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        // Get all active project types
-        $types = Post::all();
-        return response()->json(['status' => true, 'data' => $types], 200);
-    }
+        $currentMemberId = $request->query('member_id');
 
+        $posts = Post::with(['user'])
+            ->withCount(['reacts', 'comments'])
+            ->when($currentMemberId, function ($query) use ($currentMemberId) {
+                $query->withExists(['reacts as is_reacted' => function ($q) use ($currentMemberId) {
+                    $q->where('member_id', $currentMemberId);
+                }])
+                    // Add this specifically for the Save icon
+                    ->withExists(['savedPosts as is_saved' => function ($q) use ($currentMemberId) {
+                        $q->where('member_id', $currentMemberId);
+                    }]);
+            })
+            ->latest()
+            ->get();
+
+        return response()->json(['status' => true, 'data' => $posts]);
+    }
     public function show($id)
     {
         $post = Post::withCount(['comments', 'reacts'])
@@ -42,7 +56,8 @@ class PostController extends Controller
         $validator = Validator::make($request->all(), [
             'content' => 'required|string',
             'member_id' => 'required|exists:users,id',
-            'images.*' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120'
+            'images' => 'nullable|array|max:4',
+            'images.*' => 'image|mimes:jpg,jpeg,png,webp|max:5120'
         ]);
 
         if ($validator->fails()) {
@@ -84,6 +99,8 @@ class PostController extends Controller
                 'member_id' => $request->member_id,
             ]);
 
+            $post->load('user')->loadCount(['comments', 'reacts']);
+
             Cache::put($cacheKey, md5($request->content), now()->addMinutes(1));
 
             return response()->json(['status' => true, 'message' => 'Green Product added!', 'data' => $post], 201);
@@ -112,32 +129,41 @@ class PostController extends Controller
         }
 
         return DB::transaction(function () use ($request, $post) {
+            $existingImages = json_decode($request->input('existing_images', '[]'), true);
+            $newImagePaths = [];
+
             if ($request->hasFile('images')) {
-                // Delete old images from folder
-                if ($post->image) {
-                    foreach ($post->image as $oldImage) {
-                        $filePath = public_path('uploads/posts/' . $oldImage);
-
-                        // check if the file exists before unlinking
-                        if (file_exists($filePath)) {
-                            unlink($filePath);
-                        }
-                    }
-                }
-
-                $imagePaths = [];
                 foreach ($request->file('images') as $file) {
                     $name = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
                     $file->move(public_path('uploads/posts'), $name);
-                    $imagePaths[] = $name;
+                    $newImagePaths[] = $name;
                 }
-                $post->image = $imagePaths;
             }
 
             $post->content = $request->content ?? $post->content;
+            $post->image = array_merge($existingImages, $newImagePaths);
             $post->save();
 
-            return response()->json(['status' => true, 'message' => 'Product Updated successfully!', 'data' => $post], 200);
+            // Use a fresh query to load everything including the interaction booleans
+            $currentMemberId = $request->member_id;
+
+            $updatedPost = Post::with(['user'])
+                ->withCount(['comments', 'reacts'])
+                ->when($currentMemberId, function ($query) use ($currentMemberId) {
+                    $query->withExists(['reacts as is_reacted' => function ($q) use ($currentMemberId) {
+                        $q->where('member_id', $currentMemberId);
+                    }])
+                        ->withExists(['savedPosts as is_saved' => function ($q) use ($currentMemberId) {
+                            $q->where('member_id', $currentMemberId);
+                        }]);
+                })
+                ->find($post->id);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Post Updated successfully!',
+                'data' => $updatedPost
+            ], 200);
         });
     }
 
@@ -159,6 +185,7 @@ class PostController extends Controller
         return response()->json(['status' => true, 'message' => 'Post deleted'], 200);
     }
 
+
     public function toggleReact(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -167,25 +194,42 @@ class PostController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json(['status' => false, 'errors' => $validator->errors()], 422);
+            return response()->json([
+                'status' => false,
+                'message' => 'Missing User ID',
+                'errors' => $validator->errors()
+            ], 422);
         }
-
-        return DB::transaction(function () use ($request) {
+        try {
             $data = [
                 'post_id' => $request->post_id,
                 'member_id' => $request->member_id
             ];
 
+            // Ensure you are using the correct Model name here
             $existing = React::where($data)->first();
 
             if ($existing) {
                 $existing->delete();
-                return response()->json(['status' => true, 'action' => 'unliked']);
+                $action = 'unliked';
+            } else {
+                React::create(array_merge(['react_date' => now()], $data));
+                $action = 'liked';
             }
 
-            React::create(array_merge($data, ['react_date' => now()]));
-            return response()->json(['status' => true, 'action' => 'liked']);
-        });
+            $count = React::where('post_id', $request->post_id)->count();
+
+            return response()->json([
+                'status' => true,
+                'action' => $action,
+                'reacts_count' => $count
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => $e->getMessage() // This will tell you exactly why it's crashing
+            ], 500);
+        }
     }
 
     public function toggleSave(Request $request)
@@ -215,5 +259,19 @@ class PostController extends Controller
             SavedPost::create(array_merge($data, ['savedDate' => now()]));
             return response()->json(['status' => true, 'message' => 'Saved']);
         });
+    }
+
+    public function getGreenHeroes()
+    {
+        // We get users, and count the reacts on their posts
+        $heroes = User::withCount(['reactsReceived as reacts_count'])
+            ->orderBy('reacts_count', 'desc')
+            ->take(6)
+            ->get();
+
+        return response()->json([
+            'status' => true,
+            'data' => $heroes
+        ]);
     }
 }

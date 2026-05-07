@@ -41,7 +41,7 @@ axios.interceptors.response.use(
         console.warn("Session truly expired. Redirecting...");
         localStorage.removeItem("token");
         localStorage.removeItem("user");
-        window.location.href = "/signin";
+        //window.location.href = "/signin";
       }
     }
     

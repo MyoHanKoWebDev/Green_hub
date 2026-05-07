@@ -272,10 +272,10 @@ export default function ProjectModal({
           </div>
 
           <div className="flex items-center gap-3 mt-4 lg:justify-end">
-            <Button variant="outline" className="flex-1" onClick={onClose} disabled={loading}>
+            <Button variant="outline" onClick={onClose} disabled={loading}>
               Cancel
             </Button>
-            <Button type="submit" className="flex-1" disabled={loading}>
+            <Button type="submit" disabled={loading}>
               {loading
                 ? uploadProgress < 100
                   ? `Uploading ${uploadProgress}%`

@@ -28,7 +28,7 @@ export default function DescriptionModal({ isOpen, onClose, product }: Descripti
                   <h3 className="text-xl font-bold text-gray-900 dark:text-white">
                     {product.productName}
                   </h3>
-                  <p className="text-brand-500 font-semibold">${product.price}</p>
+                  <p className="text-brand-500 font-semibold">{product.price ? Number(product.price).toLocaleString('en-US') : "0"} Ks</p>
                 </div>
             </div>
             
@@ -42,7 +42,7 @@ export default function DescriptionModal({ isOpen, onClose, product }: Descripti
             <Button
                 variant='outline'
               onClick={onClose}
-              className="w-full "
+              className="w-full mt-3"
             >
               Close Details
             </Button>

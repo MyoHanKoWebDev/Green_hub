@@ -16,38 +16,101 @@ class GreenProductController extends Controller
 {
     public function index(Request $request)
     {
-        $search = $request->query('search');
-        $projectId = $request->query('project_id');
-        
-        $products = GreenProduct::where('stock_qty', '>', 0)
-        ->with(['ecoProjects' => function($query) {
-            $query->select('eco_projects.id', 'title'); // Get only what you need
-        }])
-        ->when($search, function ($query, $search) {
-            return $query->where('productName', 'LIKE', "%{$search}%")
-                         ->orWhere('description', 'LIKE', "%{$search}%");
-        })
-        ->when($projectId, function ($query, $projectId) {
-            return $query->whereHas('ecoProjects', function($q) use ($projectId) {
-                $q->where('eco_projects.id', $projectId);
+        // 1. Clean up inputs (Use null if empty string to avoid query errors)
+        $search = $request->filled('search') ? $request->query('search') : null;
+        $projectId = $request->filled('project_id') ? $request->query('project_id') : null;
+        $minPrice = $request->query('min_price');
+        $maxPrice = $request->query('max_price');
+
+        // Use one variable for sort logic
+        $sort = $request->query('sort', 'newest');
+        $perPage = $request->query('per_page', 6);
+
+        $query = GreenProduct::where('stock_qty', '>=', 0)
+            ->with(['ecoProjects' => function ($query) {
+                $query->select('eco_projects.id', 'title');
+            }])
+            ->withCount('ratings')
+            ->withAvg('ratings', 'rating');
+
+        // 2. Apply Filters
+        $query->when($search, function ($q, $search) {
+            return $q->where(function ($sub) use ($search) {
+                $sub->where('productName', 'LIKE', "%{$search}%");
             });
         })
-        ->withCount('ratings')
-        ->withAvg('ratings', 'rating')
-        ->orderBy('id', 'desc')
-        ->get();
+            ->when($projectId, function ($q, $projectId) {
+                return $q->whereHas('ecoProjects', function ($sub) use ($projectId) {
+                    $sub->where('eco_projects.id', $projectId);
+                });
+            })
+            ->when($request->filled('min_price'), function ($query) use ($minPrice) {
+                // Cast to float to match the decimal precision in DB
+                return $query->where('price', '>=', (float)$minPrice);
+            })
+            ->when($request->filled('max_price'), function ($query) use ($maxPrice) {
+                return $query->where('price', '<=', (float)$maxPrice);
+            });
 
-    return response()->json([
-        'status' => true,
-        'data' => $products
-    ]);
+        // 3. Optimized Sorting Logic (Fixed the 500 error)
+        if ($sort === 'popular') {
+            // Must match the naming convention of withAvg
+            $query->orderBy('ratings_avg_rating', 'desc');
+        } else {
+            // Default to newest
+            $query->orderBy('created_at', 'desc');
+        }
+
+        $products = $query->paginate($perPage);
+
+        return response()->json([
+            'status' => true,
+            'data' => $products->items(),
+            'pagination' => [
+                'total' => $products->total(),
+                'current_page' => $products->currentPage(),
+                'per_page' => $products->perPage(),
+                'last_page' => $products->lastPage(),
+            ]
+        ]);
     }
 
     public function show($id)
     {
-        // We only show products that have at least 1 in stock
-        $products = GreenProduct::where('id', $id)->get();
-        return response()->json(['status' => true, 'data' => $products]);
+        // 1. Find the current product with its projects
+        $product = GreenProduct::with([
+            'ecoProjects' => function ($q) {
+                // Get the video URL and description from the associated project
+                $q->select('eco_projects.id', 'title', 'description', 'video');
+            },
+        ])
+        ->withCount('ratings')
+    ->withAvg('ratings', 'rating')
+    ->findOrFail($id);
+        // 2. Get the ID of the first associated project
+        $projectId = $product->ecoProjects->first()?->id;
+
+        // 3. Find other products sharing that project ID
+        $recommendations = [];
+        if ($projectId) {
+            $recommendations = GreenProduct::where('id', '!=', $id) // Exclude current product
+                ->whereHas('ecoProjects', function ($query) use ($projectId) {
+                    $query->where('eco_projects.id', $projectId);
+                })
+                ->with(['ecoProjects' => function ($query) {
+                    $query->select('eco_projects.id', 'title');
+                }])
+                ->where('stock_qty', '>=', 0)
+                ->withAvg('ratings', 'rating')
+                ->limit(4)
+                ->get();
+        }
+
+        return response()->json([
+            'status' => true,
+            'data' => $product,
+            'recommendations' => $recommendations
+        ]);
     }
 
     public function store(Request $request)
@@ -161,15 +224,16 @@ class GreenProductController extends Controller
         $product = GreenProduct::find($id);
         if (!$product) return response()->json(['message' => 'Not found'], 404);
 
-        if ($product->image) {
+        //Security: Don't delete if there are purchase details (history)
+        if ($product->purchaseDetails()->exists()) {
+            return response()->json(['message' => 'Product has history, cannot delete. Set stock to 0 instead.'], 400);
+        }
+
+         if ($product->image) {
             $oldPath = public_path('uploads/admin/' . $product->image);
             if (file_exists($oldPath)) {
                 unlink($oldPath);
             }
-        }
-        //Security: Don't delete if there are purchase details (history)
-        if ($product->purchaseDetails()->exists()) {
-            return response()->json(['message' => 'Product has history, cannot delete. Set stock to 0 instead.'], 400);
         }
 
         $product->delete();

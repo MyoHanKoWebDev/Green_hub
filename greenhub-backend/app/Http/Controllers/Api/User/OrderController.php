@@ -3,12 +3,15 @@
 namespace App\Http\Controllers\Api\User;
 
 use App\Http\Controllers\Controller;
+use App\Mail\OrderConfirmed;
+use App\Mail\OrderRejected;
 use App\Models\GreenProduct;
 use App\Models\Purchase;
 use App\Models\PurchaseDetail;
 use App\Models\Transaction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 
 class OrderController extends Controller
@@ -45,6 +48,7 @@ class OrderController extends Controller
             'items.*.product_id' => 'required|exists:green_products,id',
             'items.*.quantity' => 'required|integer|min:1',
             'shipping_address' => 'required|string',
+            'phone_number' => 'required|string',
             'payment_id' => 'required|string',
             'transaction_no' => 'required|string|unique:transactions,tran_no',
             'payment_proof_img' => 'nullable|image|max:5120'
@@ -60,7 +64,8 @@ class OrderController extends Controller
                 'status' => 'pending',
                 'purchaseDate' => now(),
                 'member_id' => $request->member_id,
-                'shipping_address' => $request->shipping_address, // Ensure this column exists!
+                'shipping_address' => $request->shipping_address,
+                'phone_number' => $request->phone_number,
             ]);
 
             // Handle Payment Proof Image Upload
@@ -88,7 +93,7 @@ class OrderController extends Controller
 
             // 5. Save Items and Deduct Stock
             foreach ($request->items as $item) {
-                $product = GreenProduct::lockForUpdate()->find($item['product_id']);
+                $product = GreenProduct::find($item['product_id']);
 
                 if ($product->stock_qty < $item['quantity']) {
                     throw new \Exception("Stock insufficient for {$product->productName}");
@@ -105,7 +110,7 @@ class OrderController extends Controller
 
             return response()->json([
                 'status' => true,
-                'message' => 'Order and Transaction recorded!',
+                'message' => 'Order placed! Waiting for admin confirmation.',
                 'transaction_id' => $transaction->tran_no
             ], 201);
         });
@@ -114,37 +119,55 @@ class OrderController extends Controller
     public function confirmOrder($id)
     {
         return DB::transaction(function () use ($id) {
-            $purchase = Purchase::with('purchaseDetails.greenProduct')->findOrFail($id);
+            // Load the user relationship so we have the email address
+            $purchase = Purchase::with(['purchaseDetails.greenProduct', 'user'])->findOrFail($id);
 
             if ($purchase->status !== 'pending') {
                 return response()->json(['message' => 'Order is already processed'], 400);
             }
 
-            // 1. Verify and Decrease Stock NOW
-            foreach ($purchase->purchaseDetails as $detail) {
-                $product = $detail->greenProduct;
+            // foreach ($purchase->purchaseDetails as $detail) {
+            //     $product = $detail->greenProduct;
+            //     if ($product->stock_qty < $detail->quantity) {
+            //         return response()->json([
+            //             'status' => false,
+            //             'message' => "Confirmation failed. {$product->productName} is now out of stock."
+            //         ], 422);
+            //     }
+            //     $product->decrement('stock_qty', $detail->quantity);
+            // }
 
-                if ($product->stock_qty < $detail->quantity) {
-                    return response()->json([
-                        'status' => false,
-                        'message' => "Stock insufficient for {$product->productName}"
-                    ], 422);
-                }
-
-                $product->decrement('stock_qty', $detail->quantity);
-            }
-
-            // 2. Update Status
             $purchase->update(['status' => 'confirmed']);
 
-            return response()->json(['status' => true, 'message' => 'Order confirmed and stock updated!']);
+            // Send Confirmation Email with Voucher Link
+            Mail::to($purchase->user->email)->send(new OrderConfirmed($purchase));
+
+            return response()->json(['status' => true, 'message' => 'Order confirmed and email sent!']);
         });
     }
 
-    public function rejectOrder($id)
-    {
-        $purchase = Purchase::findOrFail($id);
+   public function rejectOrder($id)
+{
+    return DB::transaction(function () use ($id) {
+        $purchase = Purchase::with(['purchaseDetails.greenProduct', 'user'])->findOrFail($id);
+
+        // Only allow rejection if the order is currently 'pending'
+        if ($purchase->status !== 'pending') {
+            return response()->json(['status' => false, 'message' => 'Order cannot be rejected'], 400);
+        }
+
+        // REVERT THE STOCK: Add the quantities back to the products
+        foreach ($purchase->purchaseDetails as $detail) {
+            $product = $detail->greenProduct;
+            $product->increment('stock_qty', $detail->quantity);
+        }
+
         $purchase->update(['status' => 'rejected']);
-        return response()->json(['status' => true, 'message' => 'Order rejected.']);
-    }
+
+        // Send Rejection Email
+        Mail::to($purchase->user->email)->send(new OrderRejected($purchase));
+
+        return response()->json(['status' => true, 'message' => 'Order rejected and stock restored.']);
+    });
+}
 }

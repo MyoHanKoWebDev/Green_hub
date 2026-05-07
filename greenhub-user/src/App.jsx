@@ -7,6 +7,8 @@ import { useEffect } from "react";
 function App() {
   useEffect(() => {
     const checkAuth = async () => {
+      const token = localStorage.getItem('token');
+      if (!token) return; // Don't call API if there's no token
       try {
         await axios.get('api/user/verify-session');
         console.log("Session is valid.");
@@ -25,7 +27,7 @@ function App() {
       <>
       <Navbar />
 
-      <div className="h-screen p-5 ">
+      <div className="h-screen p-5 mt-20">
         <Outlet />
       </div>
     </>

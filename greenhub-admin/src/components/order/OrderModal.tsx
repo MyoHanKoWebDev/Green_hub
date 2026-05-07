@@ -55,7 +55,7 @@ export default function OrderDetailsModal({ isOpen, onClose, order }: any) {
                     <p className="text-xs text-gray-400">Qty: {item.quantity}</p>
                   </div>
                   <p className="text-sm font-bold text-gray-700 dark:text-gray-200">
-                    ${(item.quantity * item.green_product?.price).toFixed(2)}
+                    {(item.quantity * Number(item.green_product?.price)).toLocaleString('en-US')} Ks
                   </p>
                 </div>
               ))}
@@ -63,7 +63,7 @@ export default function OrderDetailsModal({ isOpen, onClose, order }: any) {
 
             <div className="mt-4 pt-4 border-t border-dashed border-gray-200 dark:border-white/10 flex justify-between items-center">
               <span className="text-gray-500 font-medium">Total Amount</span>
-              <span className="text-xl font-bold text-brand-500">${totalAmount?.toFixed(2)}</span>
+              <span className="text-xl font-bold text-brand-500">{Number(totalAmount)?.toLocaleString('en-US')} Ks</span>
             </div>
           </div>
         </div>

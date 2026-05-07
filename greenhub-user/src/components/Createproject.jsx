@@ -1,106 +1,125 @@
-import React, { useState } from "react";
-import { PhotoIcon, VideoCameraIcon } from "@heroicons/react/24/outline";
+import React, { useEffect, useState } from "react";
+import { PhotoIcon, TrashIcon, VideoCameraIcon } from "@heroicons/react/24/outline";
 import {
   Disclosure,
   DisclosureButton,
   DisclosurePanel,
+  Transition,
 } from "@headlessui/react";
 import { MinusIcon, PlusIcon } from "@heroicons/react/20/solid";
+import toast from "react-hot-toast";
+import axios from "../../api/axios";
+import { motion } from "framer-motion";
+import { getImageUrl } from "../utils/getImageUrl";
 
-const filters = [
-  {
-    id: "category",
-    name: "Project Type",
-    options: [
-      {
-        value: "tree-planting",
-        label: "Tree Planting Projects",
-        checked: false,
-      },
-      {
-        value: "recycling",
-        label: "Recycling & Upcycling Projects",
-        checked: false,
-      },
-      { value: "clean-energy", label: "Clean Energy Projects", checked: false },
-      {
-        value: "water-conservation",
-        label: "Water Conservation Projects",
-        checked: false,
-      },
-      {
-        value: "community-crafts",
-        label: "Community Eco Crafts",
-        checked: false,
-      },
-      {
-        value: "organic-farming",
-        label: "Organic Farming Initiatives",
-        checked: false,
-      },
-      {
-        value: "wildlife-protection",
-        label: "Wildlife Protection Projects",
-        checked: false,
-      },
-      {
-        value: "green-tech",
-        label: "Green Tech Innovation Projects",
-        checked: false,
-      },
-    ],
-  },
-];
-
-const CreateProjectPost = ({ onSubmit }) => {
+const CreateProjectPost = ({ user, projectTypes, onCancel, onSuccess, projectToEdit=null}) => {
   const [title, setTitle] = useState("");
-  const [selectedCategories, setSelectedCategories] = useState([]);
-  const [desc, setDesc] = useState("");
-  const [mediaPreview, setMediaPreview] = useState([]);
-  const [mediaFiles, setMediaFiles] = useState([]);
+  const [description, setDescription] = useState("");
+  const [projectTypeId, setProjectTypeId] = useState("");
+  const [videoFile, setVideoFile] = useState(null);
+  const [loading, setLoading] = useState(false);
+  
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadStatus, setUploadStatus] = useState("idle");
 
-  const handleMediaUpload = (e) => {
-    const files = Array.from(e.target.files);
-    const previews = files.map((file) => ({
-      type: file.type.includes("image") ? "image" : "video",
-      url: URL.createObjectURL(file),
-    }));
-    setMediaFiles(files);
-    setMediaPreview(previews);
+  // --- 1. POPULATE FORM FOR EDITING ---
+  useEffect(() => {
+    if (projectToEdit) {
+      setTitle(projectToEdit.title || "");
+      setDescription(projectToEdit.description || "");
+      setProjectTypeId(projectToEdit.project_type_id?.toString() || "");
+      // Note: We don't set the videoFile here because it's a File object.
+      // The UI will show "Ready to share" or "Keep existing" logic.
+      setUploadStatus("idle");
+    } else {
+      // Clear form if switching back to "Create" mode
+      setTitle("");
+      setDescription("");
+      setProjectTypeId("");
+      setVideoFile(null);
+    }
+  }, [projectToEdit]);
+
+  const handleVideoChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const fileSizeInMB = file.size / (1024 * 1024);
+      if (fileSizeInMB > 50) {
+        toast.error(`Video is ${fileSizeInMB.toFixed(2)}MB. Max limit is 50MB.`);
+        return;
+      }
+      setVideoFile(file);
+      setUploadStatus("idle");
+      setUploadProgress(0);
+    }
   };
 
-  const submitPost = () => {
-    onSubmit({
-      title,
-      description: desc,
-      media: mediaPreview,
-      date: new Date().toDateString(),
-      author: {
-        name: "You",
-        role: "EcoMember",
-        avatar: "https://via.placeholder.com/40",
-      },
-    });
-    setTitle("");
-    setDesc("");
-    setMediaPreview([]);
-  };
+  const submitPost = async (e) => {
+    e.preventDefault();
+    
+    // In Edit mode, video is optional (keep old one if not provided)
+    if (!projectToEdit && !videoFile) return toast.error("Please upload a project video");
+    if (!projectTypeId) return toast.error("Please select a project type");
 
-  const removeMedia = (index) => {
-    setMediaPreview((prev) => prev.filter((_, i) => i !== index));
+    setLoading(true);
+    setUploadStatus("uploading");
+
+    const formData = new FormData();
+    formData.append("title", title);
+    formData.append("description", description);
+    formData.append("project_type_id", projectTypeId);
+    formData.append("member_id", user.id);
+
+    if (videoFile) {
+      formData.append("video", videoFile);
+    }
+
+    // --- 2. DYNAMIC URL AND METHOD ---
+    // If editing, Laravel requires _method: PUT inside a POST request for FormData
+    const url = projectToEdit 
+      ? `/api/admin/projects/${projectToEdit.id}` 
+      : "/api/admin/projects/storeMember";
+
+    if (projectToEdit) {
+      formData.append("_method", "PUT");
+    }
+
+    try {
+      const response = await axios.post(url, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+        onUploadProgress: (progressEvent) => {
+          const percent = Math.round((progressEvent.loaded * 100) / (progressEvent.total || 1));
+          setUploadProgress(percent);
+        },
+      });
+
+      if (response.data.status) {
+        setUploadStatus("success");
+        toast.success(projectToEdit ? "Project Updated!" : "Project Shared Successfully!");
+        onSuccess();
+      }
+    } catch (err) {
+      setUploadStatus("error");
+      const msg = err.response?.data?.errors 
+        ? Object.values(err.response.data.errors)[0][0] 
+        : "Operation failed";
+      toast.error(msg);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="bg-white p-4 mb-6 transition-all duration-500">
+    <form onSubmit={submitPost} className="bg-white p-4 mb-6 transition-all duration-500">
       {/* Header */}
       <div className="flex items-center mb-4">
         <img
-          src="../../public/images/profile1.png"
+          src={getImageUrl(user.proImg,user)}
           alt="avatar"
-          className="w-10 h-10 rounded-full mr-3"
+          className="w-10 h-10 rounded-full mr-3 object-cover"
         />
         <div className="flex-1">
-          <p className="font-semibold text-gray-800">You</p>
+          <p className="font-semibold text-gray-800">{user.name}</p>
           <p className="text-xs text-gray-500">EcoMember</p>
         </div>
       </div>
@@ -108,141 +127,131 @@ const CreateProjectPost = ({ onSubmit }) => {
       <input
         type="text"
         placeholder="Project Title"
+        required
         className="w-full mb-2 p-3 rounded-lg border-none outline-none focus:border-none focus:outline-none text-gray-800"
         value={title}
         onChange={(e) => setTitle(e.target.value)}
       />
 
+      {/* Project Type Dropdown (Smooth) */}
+      <Disclosure as="div" className="border border-gray-100 rounded-xl bg-gray-50/50 mb-3 ">
+        {({ open }) => (
+          <>
+            <DisclosureButton className="flex w-full items-center justify-between p-3 text-gray-400">
+              <span className="">
+                {projectTypeId 
+                  ? projectTypes.find(t => t.id.toString() === projectTypeId)?.typeName 
+                  : "Select Project Type"}
+              </span>
+              {open ? <MinusIcon className="w-5 h-5" /> : <PlusIcon className="w-5 h-5" />}
+            </DisclosureButton>
+            <Transition
+              enter="transition duration-200 ease-out"
+              enterFrom="transform scale-95 opacity-0 max-h-0"
+              enterTo="transform scale-100 opacity-100 max-h-[300px]"
+              leave="transition duration-150 ease-out"
+              leaveFrom="transform scale-100 opacity-100 max-h-[300px]"
+              leaveTo="transform scale-95 opacity-0 max-h-0"
+            >
+              <DisclosurePanel className="p-2 pt-0 space-y-1">
+                {projectTypes?.map((type) => (
+                  <div 
+                    key={type.id}
+                    onClick={() => {
+                      setProjectTypeId(type.id.toString());
+                    }}
+                    className={`p-2 px-3 rounded-lg cursor-pointer text-sm transition ${
+                      projectTypeId === type.id.toString() 
+                      ? "bg-lime-300 text-gray-500" 
+                      : "hover:bg-lime-50 text-gray-600"
+                    }`}
+                  >
+                    {type.typeName}
+                  </div>
+                ))}
+              </DisclosurePanel>
+            </Transition>
+          </>
+        )}
+      </Disclosure>
+
       {/* Description */}
       <textarea
-        placeholder="Describe your project..."
+        placeholder="Tell the community about your project..."
         className="w-full mb-3 p-3 rounded-lg border border-slate-300 focus:ring-1 focus:ring-lime-500 focus:outline-none text-gray-800"
         rows="3"
-        value={desc}
-        onChange={(e) => setDesc(e.target.value)}
+        required
+        value={description}
+        onChange={(e) => setDescription(e.target.value)}
       />
 
-      {filters.map((section) => (
-        <Disclosure
-          key={section.id}
-          as="div"
-          className="p-3 pb-5 mb-5 border-b border-gray-200"
-        >
-          <h3 className="-my-3 flow-root">
-            <DisclosureButton className="group flex w-full items-center justify-between bg-white  text-sm text-gray-400 hover:text-gray-500">
-              <span className="font-medium text-gray-950">{section.name}</span>
-              <span className="ml-6 flex items-center">
-                <PlusIcon
-                  aria-hidden="true"
-                  className="size-5 group-data-open:hidden"
-                />
-                <MinusIcon
-                  aria-hidden="true"
-                  className="size-5 group-not-data-open:hidden"
-                />
-              </span>
-            </DisclosureButton>
-          </h3>
-          <DisclosurePanel className="pt-6 space-y-2">
-            {section.options.map((option) => (
-              <label
-                key={option.value}
-                className="flex items-center gap-2 text-gray-700 text-sm"
-              >
-                <input
-                  type="checkbox"
-                  value={option.value}
-                  checked={selectedCategories.includes(option.value)}
-                  onChange={(e) => {
-                    if (e.target.checked) {
-                      setSelectedCategories([
-                        ...selectedCategories,
-                        option.value,
-                      ]);
-                    } else {
-                      setSelectedCategories(
-                        selectedCategories.filter((c) => c !== option.value)
-                      );
-                    }
-                  }}
-                  className="w-4 h-4"
-                />
-                {option.label}
-              </label>
-            ))}
-          </DisclosurePanel>
-        </Disclosure>
-      ))}
-
-      {/* Media Preview */}
-      {mediaPreview.length > 0 && (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-3">
-          {mediaPreview.map((m, i) => (
-            <div key={i} className="relative">
-              {/* Remove Button */}
-              <button
-                onClick={() => removeMedia(i)}
-                className="absolute top-1 right-1 bg-white/80 hover:bg-white
-                     rounded-full w-6 h-6 flex items-center justify-center shadow-md"
-              >
-                ✕
-              </button>
-
-              {m.type === "image" ? (
-                <img
-                  src={m.url}
-                  className="w-full h-40 object-cover rounded-lg border border-slate-300"
-                />
-              ) : (
-                <video
-                  controls
-                  className="w-full h-40 rounded-lg border border-slate-300"
-                >
-                  <source src={m.url} />
-                </video>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Media upload like Facebook */}
-      <div className="flex space-x-4 mb-3 justify-between items-center">
-        <label
-          className="flex flex-col items-center justify-center gap-1 px-3 py-1 md:py-2 md:px-6 rounded-lg border
-         border-slate-300 hover:bg-slate-100 cursor-pointer shadow-lg font-semibold"
-        >
-          <PhotoIcon className="w-5 h-5 md:w-6 md:h-6" />
-          <span className="text-xs md:text-sm">Gallery</span>
-          <input
-            type="file"
-            multiple
-            accept="image/*"
-            className="hidden"
-            onChange={handleMediaUpload}
-          />
+      {/* Video Upload Section */}
+      <div className="space-y-3">
+        <label className="block text-sm font-medium text-gray-700">
+          {projectToEdit ? "Update Project Video (Optional)" : "Project Video"}
         </label>
-        {/* <label className="flex-1 flex items-center justify-center gap-2 p-2 rounded-lg border hover:bg-gray-50 cursor-pointer">
-          <VideoCameraIcon className="w-6 h-6 text-green-600" />
-          <span className="text-sm text-gray-500">Video</span>
-          <input
-            type="file"
-            multiple
-            accept="video/*"
-            className="hidden"
-            onChange={handleMediaUpload}
-          />
-        </label> */}
+        
+        {!videoFile ? (
+          <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-200 rounded-2xl cursor-pointer hover:bg-gray-50 transition-all">
+            <VideoCameraIcon className="w-8 h-8 text-gray-400 mb-2" />
+            <span className="text-sm text-gray-500 text-center px-4">
+              {projectToEdit ? "Click to change video, otherwise old video is kept" : "Click to upload video (Max 50MB)"}
+            </span>
+            <input type="file" className="hidden" accept="video/*" onChange={handleVideoChange} />
+          </label>
+        ) : (
+          <div className={`p-4 rounded-2xl border ${uploadStatus === "error" ? "border-red-200 bg-red-50" : "border-lime-100 bg-white"}`}>
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-lime-500/10 rounded-lg">
+                  <VideoCameraIcon className="w-5 h-5 text-lime-600" />
+                </div>
+                <div className="overflow-hidden">
+                  <p className="text-sm font-medium text-gray-700 truncate max-w-[200px]">{videoFile.name}</p>
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wider font-bold">
+                    {uploadStatus === "uploading" ? `Uploading ${uploadProgress}%` : "New video selected"}
+                  </p>
+                </div>
+              </div>
+              <button 
+                type="button" 
+                onClick={() => {setVideoFile(null); setUploadStatus("idle");}}
+                className="text-gray-400 hover:text-red-500"
+              >
+                <TrashIcon className="w-5 h-5" />
+              </button>
+            </div>
 
-        {/* Post Button */}
-        <button
-          onClick={submitPost}
-          className="w-40 h-12 bg-lime-500 hover:bg-lime-600 text-white rounded-xl font-semibold transition"
+            {/* Framer Motion Progress Bar */}
+            <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${uploadProgress}%` }}
+                className={`h-full ${uploadStatus === "error" ? "bg-red-500" : "bg-lime-500"}`}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Action Buttons */}
+      <div className="flex items-center gap-3 justify-end mt-6">
+        <button 
+          type="button" 
+          onClick={onCancel}
+          className="px-8 py-2.5 bg-gray-100 text-gray-800 font-bold rounded-2xl hover:bg-gray-200 transition"
         >
-          Share
+          Cancel
+        </button>
+        <button
+          type="submit"
+          disabled={loading}
+          className="bg-lime-500 text-white px-8 py-2.5 rounded-xl font-bold shadow-lg shadow-lime-100 active:scale-95 transition disabled:opacity-50"
+        >
+          {loading ? (uploadProgress < 100 ? `Uploading ${uploadProgress}%` : "Sharing...") : (projectToEdit ? "Update Post" : "Share Project")}
         </button>
       </div>
-    </div>
+    </form>
   );
 };
 
