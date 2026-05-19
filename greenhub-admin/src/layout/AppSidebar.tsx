@@ -77,15 +77,12 @@ const navItems: NavItem[] = [
     icon: <CreditCardIcon className="w-5 h-5" />,
     subItems: [{ name: "Manage Payment", path: "/payment", pro: false }],
   },
+  {
+    name: "Contact",
+    icon: <ListIcon className="w-5 h-5" />,
+    subItems: [{ name: "View Contact", path: "/contact", pro: false }],
+  }
 
-  // {
-  //   name: "Pages",
-  //   icon: <PageIcon />,
-  //   subItems: [
-  //     { name: "Blank Page", path: "/blank", pro: false },
-  //     { name: "404 Error", path: "/error-404", pro: false },
-  //   ],
-  // },
 ];
 
 const othersItems: NavItem[] = [

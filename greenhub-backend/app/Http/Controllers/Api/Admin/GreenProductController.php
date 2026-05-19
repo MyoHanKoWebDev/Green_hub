@@ -18,18 +18,16 @@ class GreenProductController extends Controller
     {
         // 1. Clean up inputs (Use null if empty string to avoid query errors)
         $search = $request->filled('search') ? $request->query('search') : null;
-        $projectId = $request->filled('project_id') ? $request->query('project_id') : null;
         $minPrice = $request->query('min_price');
         $maxPrice = $request->query('max_price');
+        $projectTypeId = $request->query('project_type_id'); // This comes from React
 
         // Use one variable for sort logic
         $sort = $request->query('sort', 'newest');
         $perPage = $request->query('per_page', 6);
 
         $query = GreenProduct::where('stock_qty', '>=', 0)
-            ->with(['ecoProjects' => function ($query) {
-                $query->select('eco_projects.id', 'title');
-            }])
+            ->with(['ecoProjects.projectType'])
             ->withCount('ratings')
             ->withAvg('ratings', 'rating');
 
@@ -39,17 +37,19 @@ class GreenProductController extends Controller
                 $sub->where('productName', 'LIKE', "%{$search}%");
             });
         })
-            ->when($projectId, function ($q, $projectId) {
-                return $q->whereHas('ecoProjects', function ($sub) use ($projectId) {
-                    $sub->where('eco_projects.id', $projectId);
-                });
-            })
+
             ->when($request->filled('min_price'), function ($query) use ($minPrice) {
                 // Cast to float to match the decimal precision in DB
                 return $query->where('price', '>=', (float)$minPrice);
             })
             ->when($request->filled('max_price'), function ($query) use ($maxPrice) {
                 return $query->where('price', '<=', (float)$maxPrice);
+            })
+            ->when($projectTypeId, function ($q) use ($projectTypeId) {
+                return $q->whereHas('ecoProjects', function ($sub) use ($projectTypeId) {
+                    // Because EcoProject has 'project_type_id', we filter it here
+                    $sub->where('project_type_id', (array)$projectTypeId);
+                });
             });
 
         // 3. Optimized Sorting Logic (Fixed the 500 error)
@@ -61,7 +61,7 @@ class GreenProductController extends Controller
             $query->orderBy('created_at', 'desc');
         }
 
-        $products = $query->paginate($perPage);
+        $products = $query->paginate($request->query('per_page', 6));
 
         return response()->json([
             'status' => true,
@@ -76,42 +76,44 @@ class GreenProductController extends Controller
     }
 
     public function show($id)
-    {
-        // 1. Find the current product with its projects
-        $product = GreenProduct::with([
-            'ecoProjects' => function ($q) {
-                // Get the video URL and description from the associated project
-                $q->select('eco_projects.id', 'title', 'description', 'video');
-            },
-        ])
+{
+    // 1. Load the product with its projects and their types
+    $product = GreenProduct::with([
+        'ecoProjects' => function ($q) {
+            $q->select('eco_projects.id', 'title', 'description', 'video', 'project_type_id');
+        },
+    ])
         ->withCount('ratings')
-    ->withAvg('ratings', 'rating')
-    ->findOrFail($id);
-        // 2. Get the ID of the first associated project
-        $projectId = $product->ecoProjects->first()?->id;
+        ->withAvg('ratings', 'rating')
+        ->findOrFail($id);
 
-        // 3. Find other products sharing that project ID
-        $recommendations = [];
-        if ($projectId) {
-            $recommendations = GreenProduct::where('id', '!=', $id) // Exclude current product
-                ->whereHas('ecoProjects', function ($query) use ($projectId) {
-                    $query->where('eco_projects.id', $projectId);
-                })
-                ->with(['ecoProjects' => function ($query) {
-                    $query->select('eco_projects.id', 'title');
-                }])
-                ->where('stock_qty', '>=', 0)
-                ->withAvg('ratings', 'rating')
-                ->limit(4)
-                ->get();
-        }
+    // 2. Get the Type ID of the first associated project
+    // We reach into the first project and grab its project_type_id
+    $projectTypeId = $product->ecoProjects->first()?->project_type_id;
 
-        return response()->json([
-            'status' => true,
-            'data' => $product,
-            'recommendations' => $recommendations
-        ]);
+    $recommendations = [];
+    if ($projectTypeId) {
+        // 3. Find other products that have projects of the same Type
+        $recommendations = GreenProduct::where('id', '!=', $id) // Exclude current product
+            ->whereHas('ecoProjects', function ($query) use ($projectTypeId) {
+                // Filter projects belonging to the same type
+                $query->where('project_type_id', $projectTypeId);
+            })
+            ->with(['ecoProjects' => function ($query) {
+                $query->select('eco_projects.id', 'title', 'project_type_id');
+            }])
+            ->where('stock_qty', '>=', 0) // Usually want items actually in stock
+            ->withAvg('ratings', 'rating')
+            ->limit(4)
+            ->get();
     }
+
+    return response()->json([
+        'status' => true,
+        'data' => $product,
+        'recommendations' => $recommendations
+    ]);
+}
 
     public function store(Request $request)
     {
@@ -229,7 +231,7 @@ class GreenProductController extends Controller
             return response()->json(['message' => 'Product has history, cannot delete. Set stock to 0 instead.'], 400);
         }
 
-         if ($product->image) {
+        if ($product->image) {
             $oldPath = public_path('uploads/admin/' . $product->image);
             if (file_exists($oldPath)) {
                 unlink($oldPath);

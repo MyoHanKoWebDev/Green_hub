@@ -1,8 +1,9 @@
 import { Outlet } from "react-router-dom"
 import axios from "../api/axios";
 
-import Navbar from "./components/Navbar";
+import Navbar from "./components/common/Navbar";
 import { useEffect } from "react";
+import ScrollToTop from "./components/common/ScrollTop";
 
 function App() {
   useEffect(() => {
@@ -25,6 +26,7 @@ function App() {
   return (
     <>
       <>
+      <ScrollToTop />
       <Navbar />
 
       <div className="h-screen p-5 mt-20">

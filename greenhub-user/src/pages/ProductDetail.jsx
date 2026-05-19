@@ -1,5 +1,5 @@
-import Detail from '../components/Detail'
-import Footer from '../components/Footer'
+import Detail from '../components/product/Detail'
+import Footer from '../components/common/Footer'
 
 const ProductDetail = () => {
   return (

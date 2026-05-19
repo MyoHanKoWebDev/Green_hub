@@ -33,7 +33,7 @@ class User extends Authenticatable
     // Posts
     public function posts()
     {
-        return $this->hasMany(Post::class);
+        return $this->hasMany(Post::class,'member_id');
     }
 
     // Comments
@@ -57,19 +57,19 @@ class User extends Authenticatable
     // Member Projects
     public function memberProjects()
     {
-        return $this->hasMany(MemberProject::class);
+        return $this->hasMany(MemberProject::class, 'member_id');
     }
 
     // Ratings
     public function ratings()
     {
-        return $this->hasMany(Rating::class);
+        return $this->hasMany(Rating::class, 'member_id');
     }
 
     // Purchases
     public function purchases()
     {
-        return $this->hasMany(Purchase::class);
+        return $this->hasMany(Purchase::class, 'member_id');
     }
 
     public function reactsReceived()

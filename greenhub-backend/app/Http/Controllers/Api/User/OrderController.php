@@ -20,16 +20,24 @@ class OrderController extends Controller
     {
         $query = Purchase::with(['user', 'transaction.payment', 'purchaseDetails.greenProduct']);
 
-        // Filter by Status (pending, confirmed, rejected)
+        // 1. Filter by Status (pending, confirmed, rejected)
         $query->when($request->status && $request->status !== 'all', function ($q) use ($request) {
             return $q->where('status', $request->status);
         });
 
-        // Search by User Name
+        // 2. Search by User Name
         $query->when($request->search, function ($q) use ($request) {
             return $q->whereHas('user', function ($userQuery) use ($request) {
                 $userQuery->where('name', 'like', '%' . $request->search . '%');
             });
+        });
+
+        // 3. NEW: Filter by Calendar Date
+        // This checks if 'date' exists in the request and is not empty
+        $query->when($request->filled('date'), function ($q) use ($request) {
+            // whereDate ensures we compare only the Y-M-D part,
+            // ignoring the time (H:i:s) in the database column.
+            return $q->whereDate('purchaseDate', $request->date);
         });
 
         $orders = $query->orderBy('created_at', 'desc')->get();
@@ -146,28 +154,42 @@ class OrderController extends Controller
         });
     }
 
-   public function rejectOrder($id)
+    public function rejectOrder($id)
+    {
+        return DB::transaction(function () use ($id) {
+            $purchase = Purchase::with(['purchaseDetails.greenProduct', 'user'])->findOrFail($id);
+
+            // Only allow rejection if the order is currently 'pending'
+            if ($purchase->status !== 'pending') {
+                return response()->json(['status' => false, 'message' => 'Order cannot be rejected'], 400);
+            }
+
+            // REVERT THE STOCK: Add the quantities back to the products
+            foreach ($purchase->purchaseDetails as $detail) {
+                $product = $detail->greenProduct;
+                $product->increment('stock_qty', $detail->quantity);
+            }
+
+            $purchase->update(['status' => 'rejected']);
+
+            // Send Rejection Email
+            Mail::to($purchase->user->email)->send(new OrderRejected($purchase));
+
+            return response()->json(['status' => true, 'message' => 'Order rejected and stock restored.']);
+        });
+    }
+
+    public function getUserOrders($userId)
 {
-    return DB::transaction(function () use ($id) {
-        $purchase = Purchase::with(['purchaseDetails.greenProduct', 'user'])->findOrFail($id);
+    // Use dot notation to load: purchaseDetails AND the greenProduct inside each detail
+    $orders = Purchase::where('member_id', $userId) // Note: using member_id per your model
+        ->with('purchaseDetails.greenProduct')
+        ->orderBy('purchaseDate', 'desc')
+        ->get();
 
-        // Only allow rejection if the order is currently 'pending'
-        if ($purchase->status !== 'pending') {
-            return response()->json(['status' => false, 'message' => 'Order cannot be rejected'], 400);
-        }
-
-        // REVERT THE STOCK: Add the quantities back to the products
-        foreach ($purchase->purchaseDetails as $detail) {
-            $product = $detail->greenProduct;
-            $product->increment('stock_qty', $detail->quantity);
-        }
-
-        $purchase->update(['status' => 'rejected']);
-
-        // Send Rejection Email
-        Mail::to($purchase->user->email)->send(new OrderRejected($purchase));
-
-        return response()->json(['status' => true, 'message' => 'Order rejected and stock restored.']);
-    });
+    return response()->json([
+        'status' => true,
+        'data' => $orders
+    ]);
 }
 }

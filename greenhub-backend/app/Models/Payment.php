@@ -10,7 +10,7 @@ class Payment extends Model
 {
     use HasFactory , SoftDeletes;
 
-    protected $fillable = ['method','payImg'];
+    protected $fillable = ['method','payImg','phone'];
 
     protected $dates = ['deleted_at'];
 

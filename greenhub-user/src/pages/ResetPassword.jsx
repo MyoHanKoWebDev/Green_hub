@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { FaRecycle } from "react-icons/fa";
 import axios from "../../api/axios";
-import SuccessAlert from "../components/SuccessAlert";
+import SuccessAlert from "../components/common/SuccessAlert";
 import toast from 'react-hot-toast'; // Import toast
 
 const ResetPassword = () => {

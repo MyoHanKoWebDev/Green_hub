@@ -46,6 +46,7 @@ export default function ViewProjects() {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [selectedTypeFilter, setSelectedTypeFilter] = useState<string>("all");
 
   const openDeleteConfirm = (id: number) => {
     setItemToDelete(id);
@@ -128,10 +129,29 @@ export default function ViewProjects() {
     }
   }, [alertConfig]);
 
+  const filteredProjects = projects.filter((project) => {
+  if (selectedTypeFilter === "all") return true;
+  return project.project_type_id === parseInt(selectedTypeFilter);
+});
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between mb-6">
         <PageBreadcrumb pageTitle="Eco Projects" />
+
+    <div className="flex items-center gap-3 w-full md:w-auto">
+        <select
+      value={selectedTypeFilter}
+      onChange={(e) => setSelectedTypeFilter(e.target.value)}
+      className="py-3 px-4 rounded-lg border border-gray-200 bg-transparent text-sm text-gray-800 focus:border-brand-300 focus:outline-none dark:border-gray-800 dark:bg-gray-900 dark:text-white/90 min-w-[180px]"
+    >
+      <option value="all">All Project Types</option>
+      {projectTypes.map((type) => (
+        <option key={type.id} value={type.id.toString()}>
+          {type.typeName}
+        </option>
+      ))}
+    </select>
         <Button
           onClick={() => {
             setSelectedProject(null);
@@ -143,52 +163,65 @@ export default function ViewProjects() {
           <PlusIcon className="w-5 h-5" /> Add Project
         </Button>
       </div>
+      </div>
 
       {alertConfig && <Alert {...alertConfig} />}
 
-      <AnimatePresence mode="wait">
-        {loading ? (
-          <div key="loading">
-            <ProjectCardSkeleton />
-          </div>
-        ) : projects.length > 0 ? (
-          <motion.div
-            key="content"
-            className="grid grid-cols-1 gap-6"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
-            {projects.map((project) => (
-              <ProjectCard
-                key={project.id}
-                project={project}
-                projectTypes={projectTypes}
-                onEdit={handleEdit}
-                onDelete={() => openDeleteConfirm(project.id)}
-              />
-            ))}
-          </motion.div>
-        ) : (
-          /* --- Modern Empty State --- */
-          <motion.div
-            key="empty"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="flex flex-col items-center justify-center p-12 bg-white dark:bg-white/[0.03] border border-dashed border-gray-200 dark:border-white/[0.1] rounded-2xl"
-          >
-            <div className="flex items-center justify-center w-16 h-16 mb-4 rounded-full bg-gray-50 dark:bg-white/[0.05]">
-              <VideoCameraIcon className="w-8 h-8 text-gray-400" />
-            </div>
-            <h3 className="text-lg font-semibold text-gray-800 dark:text-white/90">
-              No projects found
-            </h3>
-            <p className="max-w-xs mt-1 text-sm text-center text-gray-500">
-              It looks like your project gallery is empty. Start by adding your
-              first ecological project.
-            </p>
-          </motion.div>
-        )}
-      </AnimatePresence>
+     <AnimatePresence mode="wait">
+  {loading ? (
+    <div key="loading">
+      <ProjectCardSkeleton />
+    </div>
+  ) : filteredProjects.length > 0 ? ( // Changed from projects.length
+    <motion.div
+      key="content"
+      className="grid grid-cols-1 gap-6"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+    >
+      {/* Changed map to use filteredProjects */}
+      {filteredProjects.map((project) => (
+        <ProjectCard
+          key={project.id}
+          project={project}
+          projectTypes={projectTypes}
+          onEdit={handleEdit}
+          onDelete={() => openDeleteConfirm(project.id)}
+        />
+      ))}
+    </motion.div>
+  ) : (
+    /* --- Modern Empty State --- */
+    <motion.div
+      key="empty"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="flex flex-col items-center justify-center p-12 bg-white dark:bg-white/[0.03] border border-dashed border-gray-200 dark:border-white/[0.1] rounded-2xl"
+    >
+      <div className="flex items-center justify-center w-16 h-16 mb-4 rounded-full bg-gray-50 dark:bg-white/[0.05]">
+        <VideoCameraIcon className="w-8 h-8 text-gray-400" />
+      </div>
+      <h3 className="text-lg font-semibold text-gray-800 dark:text-white/90">
+        {selectedTypeFilter !== "all" ? "No matches for this category" : "No projects found"}
+      </h3>
+      <p className="max-w-xs mt-1 text-sm text-center text-gray-500">
+        {selectedTypeFilter !== "all" 
+          ? "Try choosing a different category or clearing the filter." 
+          : "It looks like your project gallery is empty. Start by adding your first ecological project."}
+      </p>
+      
+      {/* Optional: Button to clear filter if no results found */}
+      {selectedTypeFilter !== "all" && (
+        <button 
+          onClick={() => setSelectedTypeFilter("all")}
+          className="mt-4 text-sm font-bold text-lime-600 hover:text-lime-700"
+        >
+          View All Projects
+        </button>
+      )}
+    </motion.div>
+  )}
+</AnimatePresence>
 
       <ProjectModal
         isOpen={isOpen}

@@ -28,6 +28,7 @@ class PaymentController extends Controller
 
         $validator = Validator::make($request->all(), [
             'method' => 'required|string|unique:payments,method,NULL,id,deleted_at,NULL',
+            'phone'  => 'nullable|string|max:20',
             'payImg'       => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
         ]);
 
@@ -45,7 +46,8 @@ class PaymentController extends Controller
 
             $payment = Payment::create([
                 'method' => $cleanMethod,
-                'payImg' => $imageName
+                'payImg' => $imageName,
+                'phone'  => $request->phone, // Added phone
             ]);
 
             return response()->json(['status' => true, 'message' => 'Payment method added!', 'data' => $payment], 201);
@@ -72,6 +74,7 @@ class PaymentController extends Controller
                 // Rule::unique is much cleaner for complex queries
                 Rule::unique('payments')->ignore($id)->whereNull('deleted_at'),
             ],
+            'phone'  => 'nullable|string|max:20', // Added phone validation
             'payImg' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
         ]);
 
@@ -92,6 +95,7 @@ class PaymentController extends Controller
 
             // Update other fields
             $payment->method = $request->input('method', $payment->method);
+            $payment->phone  = $request->input('phone', $payment->phone); // Updated phone
 
             $payment->save();
 

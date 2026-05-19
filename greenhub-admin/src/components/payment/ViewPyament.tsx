@@ -160,6 +160,12 @@ export default function ViewPayment() {
                   isHeader
                   className="px-5 py-3 text-start dark:text-gray-400"
                 >
+                  Account Number
+                </TableCell>
+                <TableCell
+                  isHeader
+                  className="px-5 py-3 text-start dark:text-gray-400"
+                >
                   Created Date
                 </TableCell>
                 <TableCell
@@ -194,6 +200,9 @@ export default function ViewPayment() {
                               </span>
                             </div>
                           </div>
+                        </TableCell>
+                        <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                          {payment.phone}
                         </TableCell>
                         <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
                           {formatDate(payment.created_at)}

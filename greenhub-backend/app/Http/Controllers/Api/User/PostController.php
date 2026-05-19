@@ -19,17 +19,25 @@ class PostController extends Controller
 {
     public function index(Request $request)
     {
-        $currentMemberId = $request->query('member_id');
+        // The ID of the person browsing (to check is_reacted/is_saved)
+        $viewerId = $request->query('member_id');
+
+        // The ID of the profile owner (to filter the list to just one person's posts)
+        $profileId = $request->query('profile_id');
 
         $posts = Post::with(['user'])
             ->withCount(['reacts', 'comments'])
-            ->when($currentMemberId, function ($query) use ($currentMemberId) {
-                $query->withExists(['reacts as is_reacted' => function ($q) use ($currentMemberId) {
-                    $q->where('member_id', $currentMemberId);
+            // Filter by profile owner if profile_id is provided
+            ->when($profileId, function ($query) use ($profileId) {
+                $query->where('member_id', $profileId);
+            })
+            // Check if the current viewer has interacted with these posts
+            ->when($viewerId, function ($query) use ($viewerId) {
+                $query->withExists(['reacts as is_reacted' => function ($q) use ($viewerId) {
+                    $q->where('member_id', $viewerId);
                 }])
-                    // Add this specifically for the Save icon
-                    ->withExists(['savedPosts as is_saved' => function ($q) use ($currentMemberId) {
-                        $q->where('member_id', $currentMemberId);
+                    ->withExists(['savedPosts as is_saved' => function ($q) use ($viewerId) {
+                        $q->where('member_id', $viewerId);
                     }]);
             })
             ->latest()
@@ -37,6 +45,7 @@ class PostController extends Controller
 
         return response()->json(['status' => true, 'data' => $posts]);
     }
+    
     public function show($id)
     {
         $post = Post::withCount(['comments', 'reacts'])

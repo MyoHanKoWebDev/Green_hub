@@ -18,7 +18,10 @@ import VerifyOtp from "../pages/VerifyOtp";
 import ResetPassword from "../pages/ResetPassword";
 import ProductDetail from "../pages/ProductDetail";
 import Checkout from "../pages/Checkout";
-import ProtectedRoute from "../components/ProtectRout";
+import ProtectedRoute from "../components/common/ProtectRout";
+import UserProfile from "../pages/UserProfile";
+import Setting from "../pages/Setting"
+import NotFound from "../pages/NotFound";
 
 const Router = () => {
   const router = createBrowserRouter([
@@ -46,11 +49,22 @@ const Router = () => {
           path: "/projects",
           element: <Projects />,
         },
-
+        {
+          path: "/user/:userId",
+          element: <UserProfile />,
+        },
+        {
+          path: "/settings",
+          element: <Setting />,
+        },
+        {
+          element: <ProtectedRoute />, // All children here require login
+          children: [
         {
           path: "/checkout",
           element: <Checkout />,
         },
+      ]},
         {
           path: "/about",
           element: <About />,
@@ -59,6 +73,10 @@ const Router = () => {
           path: "/contact",
           element: <Contact />,
         },
+        {
+          path: "*",
+          element: <NotFound />,
+        }
       ],
     },
     {

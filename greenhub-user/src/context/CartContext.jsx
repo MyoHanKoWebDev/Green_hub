@@ -30,7 +30,7 @@ export const CartProvider = ({ children }) => {
   }, [cartItems, cartKey]);
   
   const addToCart = (product) => {
-    if (!user.id) {
+    if (!user) {
           // 1. Show Alert (Using toast for a better Nganter UI experience)
           toast.error("Please sign in to purchase to products");
           return;

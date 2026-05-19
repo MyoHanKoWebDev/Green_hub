@@ -18,6 +18,7 @@ interface PaymentModalProps {
 
 export default function PaymentModal({ isOpen, onClose, onSuccess, selectedPayment }: PaymentModalProps) {
   const [methodName, setMethodName] = useState("");
+  const [phone, setPhone] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [loading , setLoading] = useState(false)
@@ -27,9 +28,11 @@ export default function PaymentModal({ isOpen, onClose, onSuccess, selectedPayme
   useEffect(() => {
     if (selectedPayment) {
       setMethodName(selectedPayment.method);
+      setPhone(selectedPayment.phone)
       setImagePreview(`http://localhost:8000/uploads/admin/${selectedPayment.payImg}`);
     } else {
       setMethodName("");
+      setPhone("");
       setImagePreview(null);
     }
     setImageFile(null);
@@ -50,6 +53,7 @@ export default function PaymentModal({ isOpen, onClose, onSuccess, selectedPayme
 
     const formData = new FormData();
     formData.append("method", methodName);
+    formData.append("phone", phone);
     if (imageFile) formData.append("payImg", imageFile);
     if (selectedPayment) formData.append("_method", "PUT");
 
@@ -104,6 +108,17 @@ export default function PaymentModal({ isOpen, onClose, onSuccess, selectedPayme
               type="text"
               value={methodName}
               onChange={(e) => setMethodName(e.target.value)}
+              required
+            />
+          </div>
+
+          <div>
+            <Label>Account Number</Label>
+            <Input
+              type="text"
+              value={phone}
+              placeholder="09..."
+              onChange={(e) => setPhone(e.target.value)}
               required
             />
           </div>

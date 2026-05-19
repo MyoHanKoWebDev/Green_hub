@@ -1,9 +1,13 @@
 import React, { useState, useEffect, Fragment } from "react";
-import PostComposer from "../components/PostComposer";
-import PostCard from "../components/PostCard";
-import PostSkeleton from "../components/PostSkeleton"; // Import it here
-import GreenHeroSidebar from "../components/GreenHeroSidebar";
-import { TrophyIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import PostComposer from "../components/post/PostComposer";
+import PostCard from "../components/post/PostCard";
+import PostSkeleton from "../components/skeleton/PostSkeleton"; // Import it here
+import GreenHeroSidebar from "../components/post/GreenHeroSidebar";
+import {
+  BookmarkIcon,
+  TrophyIcon,
+  XMarkIcon,
+} from "@heroicons/react/24/outline";
 import {
   Dialog,
   DialogPanel,
@@ -15,13 +19,14 @@ import { useAuth } from "../context/AuthContext";
 import axios from "../../api/axios";
 import { useScrollDirection } from "../utils/useScrollDirection";
 import toast from "react-hot-toast";
-import ConfirmModal from "../components/ConfirmationDelete"; // Import your modal
-import CommentModal from "../components/CommentModal";
+import ConfirmModal from "../components/common/ConfirmationDelete"; // Import your modal
+import CommentModal from "../components/post/CommentModal";
+import { motion, AnimatePresence } from "framer-motion";
 
-const Posts = () => {
-  const { user } = useAuth(); // User who is logged in
+const Posts = ({ memberId, onPostCreated, onPostDeleted, isSavedMode }) => {
+  const { user, loading } = useAuth(); // User who is logged in
   const [posts, setPosts] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loadings, setLoadings] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const scrollDir = useScrollDirection();
 
@@ -37,7 +42,7 @@ const Posts = () => {
 
   // Function to be called whenever a post is liked/reacted to
   const handleSidebarUpdate = () => {
-    setSidebarKey(prev => prev + 1);
+    setSidebarKey((prev) => prev + 1);
   };
 
   // This function updates the specific post in the main list
@@ -45,8 +50,8 @@ const Posts = () => {
     console.log("Parent received update for:", postId, "New count:", newCount);
     setPosts((prevPosts) =>
       prevPosts.map((post) =>
-        post.id === postId ? { ...post, comments_count: newCount } : post
-      )
+        post.id === postId ? { ...post, comments_count: newCount } : post,
+      ),
     );
   };
 
@@ -62,20 +67,33 @@ const Posts = () => {
   };
 
   const fetchPosts = async () => {
-    // If user isn't loaded yet, we can't check their likes
-    const queryParam = user?.id ? `?member_id=${user.id}` : ""; 
-    try {
-      setLoading(true);
-      // Send the member_id in the URL
-      const res = await axios.get(`/api/user/posts${queryParam}`);
+    if (isSavedMode && !user) return;
 
+    setLoadings(true);
+    try {
+      const params = new URLSearchParams();
+
+      // Always use user.id for reactions/saves
+      if (user?.id) {
+        params.append("member_id", user.id);
+      }
+
+      if (memberId) {
+        params.append("profile_id", memberId);
+      }
+
+      const url = isSavedMode
+        ? `/api/user/userProfile/savedPosts?viewer_id=${user?.id}`
+        : `/api/user/posts?${params.toString()}`;
+
+      const res = await axios.get(url);
       if (res.data.status) {
         setPosts(res.data.data);
       }
     } catch (err) {
-      console.error("Fetch failed", err);
+      console.error(err);
     } finally {
-      setLoading(false);
+      setLoadings(false);
     }
   };
 
@@ -90,6 +108,7 @@ const Posts = () => {
         toast.success("Green update removed!");
         // Update local state
         setPosts((prev) => prev.filter((p) => p.id !== postToDelete));
+        if (onPostDeleted) onPostDeleted();
         setIsDeleteModalOpen(false); // Close modal
       }
     } catch (err) {
@@ -99,77 +118,125 @@ const Posts = () => {
       setPostToDelete(null);
     }
   };
-  // 1. Fetch posts and heroes on component mount
+
   useEffect(() => {
+    if (loading) return;
     fetchPosts();
-  }, [user?.id]);
+  }, [user?.id, memberId, isSavedMode]);
+
+  if (loading) return <PostSkeleton />;
 
   return (
     <div className="bg-gray-50 min-h-screen pt-6 pb-12">
       <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-10">
         {/* MOBILE HEADER: Shows only on small screens */}
-        <div
-          className={`xl:hidden sticky z-[40] transition-all duration-500 ease-in-out mb-10 w-full${
-            scrollDir === "up"
-              ? "top-20 opacity-100 translate-y-0" // Adjusted top to sit below your main Nav
-              : "top-[-100px] opacity-0 -translate-y-full"
-          }`}
-        >
-          <div className="flex items-center justify-between bg-white/80 backdrop-blur-md p-4 rounded-2xl shadow-lg border border-gray-100">
-            <h2 className="font-bold text-gray-800">Community Feed</h2>
-            <button
-              onClick={() => setIsSidebarOpen(true)}
-              className="flex items-center gap-2 bg-lime-100 text-lime-700 px-4 py-2 rounded-xl font-bold text-sm active:scale-95 transition-transform"
-            >
-              <TrophyIcon className="w-5 h-5" />
-              Heroes
-            </button>
+        {!memberId && (
+          <div
+            className={`xl:hidden sticky z-[40] transition-all duration-500 ease-in-out mb-10 w-full${
+              scrollDir === "up"
+                ? "top-20 opacity-100 translate-y-0" // Adjusted top to sit below your main Nav
+                : "top-[-100px] opacity-0 -translate-y-full"
+            }`}
+          >
+            <div className="flex items-center justify-between bg-white/80 backdrop-blur-md p-4 rounded-2xl shadow-lg border border-gray-100">
+              <h2 className="font-bold text-gray-800">Community Feed</h2>
+              <button
+                onClick={() => setIsSidebarOpen(true)}
+                className="flex items-center gap-2 bg-lime-100 text-lime-700 px-4 py-2 rounded-xl font-bold text-sm active:scale-95 transition-transform"
+              >
+                <TrophyIcon className="w-5 h-5" />
+                Heroes
+              </button>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Main Grid: Left (75%) | Right (25%) */}
         <div className="flex flex-col xl:flex-row gap-8">
           {/* Left Area (Feed + Composer) - 75% */}
           <main className="xl:flex-1 space-y-6  ">
-            <div
-              className={`top-0 sticky z-60 transition-all duration-300 ${
-                scrollDir === "up"
-                  ? "top-40 xl:top-24 opacity-100" // Shows below navbar
-                  : "top-[-200px] opacity-0" // Hides off-screen
-              }`}
-            >
-              { user?.id &&
-              <PostComposer
-                user={user}
-                setPosts={setPosts}
-                postToEdit={editingPost}
-                setPostToEdit={setEditingPost}
-              />
-              }
-            </div>
-
-            <div className="xl:mt-18 mt-35 space-y-6">
-              {/* 2. Show Skeletons while loading */}
-              {loading ? (
-                <>
-                  <PostSkeleton />
-                  <PostSkeleton />
-                </>
-              ) : (
-                /* 3. Show actual posts once loaded */
-                posts.map((post) => (
-                  <PostCard
-                    key={post.id}
-                    post={post}
-                    onDelete={openDeleteModal}
-                    onEdit={(post) => setEditingPost(post)}
+            {user?.id &&
+              !isSavedMode &&
+              (!memberId || Number(memberId) === user?.id) && (
+                <div
+                  className={`${
+                    // ONLY apply sticky logic if we are NOT on a profile page
+                    !memberId
+                      ? `sticky z-[40] transition-all duration-300 ${
+                          scrollDir === "up"
+                            ? "top-40 xl:top-24 opacity-100 translate-y-0"
+                            : "top-[-200px] opacity-0 -translate-y-10"
+                        }`
+                      : "relative mb-6" // On profile, keep it simple and static
+                  }`}
+                >
+                  <PostComposer
                     user={user}
                     setPosts={setPosts}
-                    onCommentClick={() => openComments(post)}
-                    onReactSuccess={handleSidebarUpdate}
+                    postToEdit={editingPost}
+                    setPostToEdit={setEditingPost}
+                    onSuccess={() => {
+                      if (onPostCreated) onPostCreated();
+                    }}
                   />
-                ))
+                </div>
               )}
+
+            <div
+              className={`${memberId ? "mt-0" : "xl:mt-12 mt-20"} flex flex-col gap-6`}
+            >
+              <AnimatePresence>
+                {loadings ? (
+                  <>
+                    <PostSkeleton key="s1" />
+                    <PostSkeleton key="s2" />
+                  </>
+                ) : posts.length > 0 ? (
+                  posts.map((post) => (
+                    <motion.div
+                      key={post.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                    >
+                      <PostCard
+                        post={post}
+                        onDelete={openDeleteModal}
+                        onEdit={(post) => setEditingPost(post)}
+                        user={user}
+                        setPosts={setPosts}
+                        onCommentClick={() => openComments(post)}
+                        onReactSuccess={handleSidebarUpdate}
+                        isSavedMode={isSavedMode}
+                      />
+                    </motion.div>
+                  ))
+                ) : (
+                  /* EMPTY STATE UI */
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="w-full flex flex-col items-center justify-center py-24 bg-white rounded-3xl border-2 border-dashed border-gray-100 shadow-sm"
+                  >
+                    <div className="bg-lime-50 p-6 rounded-full mb-6">
+                      <BookmarkIcon className="w-14 h-14 text-lime-200" />
+                    </div>
+
+                    <div className="text-center">
+                      <h3 className="text-xl font-black text-gray-800 tracking-tight">
+                        {isSavedMode
+                          ? "Your bookmark list is empty"
+                          : "No stories shared yet"}
+                      </h3>
+                      <p className="text-gray-400 text-sm mt-2 max-w-[250px] mx-auto font-medium leading-relaxed">
+                        {isSavedMode
+                          ? "When you find something inspiring, save it to view it later here."
+                          : "Be the first one to start a conversation in the community!"}
+                      </p>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </main>
 
@@ -177,7 +244,8 @@ const Posts = () => {
           <aside className="hidden xl:block xl:w-96 xl:flex-shrink-0">
             {/* Sticky ensures the hero list follows you while you scroll the main feed */}
             <div className="sticky top-24 space-y-6">
-              <GreenHeroSidebar key={sidebarKey} />
+              {!memberId && <GreenHeroSidebar key={sidebarKey} />}
+
               {/* Optional: Add Eco-News or Event widget below */}
             </div>
           </aside>
@@ -248,7 +316,7 @@ const Posts = () => {
         message="Are you sure you want to remove this update from the Community Feed? This cannot be undone."
       />
 
-     <CommentModal
+      <CommentModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         post={selectedPost}

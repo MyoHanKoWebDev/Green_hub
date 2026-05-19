@@ -6,10 +6,14 @@ use App\Http\Controllers\Api\Admin\GreenProductController;
 use App\Http\Controllers\Api\User\AuthController;
 use App\Http\Controllers\Api\Admin\PaymentController;
 use App\Http\Controllers\Api\Admin\ProjectTypeController;
+use App\Http\Controllers\api\admin\ReportController;
 use App\Http\Controllers\Api\User\CommentController;
+use App\Http\Controllers\Api\User\ContactController;
 use App\Http\Controllers\Api\User\OrderController;
 use App\Http\Controllers\Api\User\PostController;
 use App\Http\Controllers\Api\User\ProjectController;
+use App\Http\Controllers\Api\User\UserController;
+use App\Models\Contact;
 use App\Models\Purchase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -26,6 +30,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 | is assigned the "api" middleware group. Enjoy building your API!
 |
 */
+
 Route::get('/orders/voucher/{id}', function ($id) {
     $purchase = Purchase::with(['purchaseDetails.greenProduct', 'user'])->findOrFail($id);
 
@@ -53,7 +58,7 @@ Route::prefix('user')->group(function () {
                     'user' => $request->user()
                 ]);
             });
-            Route::put('/update-profile/{id}', 'updateProfile');
+            Route::post('/update-profile/{id}', 'updateProfile');
             Route::put('/change-password/{id}', 'changePassword');
         });
     });
@@ -78,15 +83,31 @@ Route::prefix('user')->group(function () {
         Route::delete('/{id}', 'destroy');
     });
 
+    Route::controller(UserController::class)->prefix('userProfile')->group(function () {
+        Route::get('/savedPosts', 'getSavedPosts');
+        Route::get('/{userId}', 'show');
+    });
+
     Route::controller(OrderController::class)->prefix('orders')->group(function () {
         Route::get('/', 'index');
+        Route::get('/{userId}', 'getUserOrders');
         Route::post('/', 'checkout');
         Route::post('/{id}/confirm', [OrderController::class, 'confirmOrder']);
         Route::post('/{id}/reject', [OrderController::class, 'rejectOrder']);
     });
+
+    Route::controller(ContactController::class)->prefix('contact')->group(function () {
+        Route::get('/', 'index');
+        Route::post('/', 'store');
+    });
 });
 
 Route::prefix('admin')->group(function () {
+    Route::controller(ReportController::class)->prefix('reports')->group(function () {
+        Route::get('/', 'index');
+        Route::get('/sales', 'getSalesChart');
+        Route::get('/top-project-types' , 'getTopProjectTypes');
+    });
     // --- Payment Management ---
     Route::controller(PaymentController::class)->prefix('payments')->group(function () {
         Route::get('/', 'index');

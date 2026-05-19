@@ -1,6 +1,6 @@
 import React from 'react'
-import Shipping from '../components/Shipping'
-import Footer from '../components/Footer'
+import Shipping from '../components/product/Shipping'
+import Footer from '../components/common/Footer'
 
 const Checkout = () => {
   return (

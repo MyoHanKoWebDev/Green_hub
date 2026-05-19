@@ -1,135 +1,83 @@
+import { useMemo } from "react";
 import Chart from "react-apexcharts";
 import { ApexOptions } from "apexcharts";
-import ChartTab from "../common/ChartTab";
 
-export default function StatisticsChart() {
-  const options: ApexOptions = {
-    legend: {
-      show: false, // Hide legend
-      position: "top",
-      horizontalAlign: "left",
-    },
-    colors: ["#465FFF", "#9CB9FF"], // Define line colors
+export default function StatisticsChart({data , setYear, year, loading}) {
+  // Generate an array for the last 5 years
+  const lastFiveYears = useMemo(() => 
+    Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i), 
+  []);
+  const options: ApexOptions = useMemo(() => ({
+    colors: ["#465FFF"],
     chart: {
       fontFamily: "Outfit, sans-serif",
+      type: "area",
       height: 310,
-      type: "line", // Set the chart type to 'line'
-      toolbar: {
-        show: false, // Hide chart toolbar
-      },
+      toolbar: { show: false },
+      animations: {
+        enabled: true,
+        easing: 'easeinout',
+        speed: 800,
+        animateGradually: { enabled: true, delay: 150 },
+        dynamicAnimation: { enabled: true, speed: 350 }
+      }
     },
-    stroke: {
-      curve: "straight", // Define the line style (straight, smooth, or step)
-      width: [2, 2], // Line width for each dataset
-    },
-
-    fill: {
-      type: "gradient",
-      gradient: {
-        opacityFrom: 0.55,
-        opacityTo: 0,
-      },
-    },
-    markers: {
-      size: 0, // Size of the marker points
-      strokeColors: "#fff", // Marker border color
-      strokeWidth: 2,
-      hover: {
-        size: 6, // Marker size on hover
-      },
-    },
-    grid: {
-      xaxis: {
-        lines: {
-          show: false, // Hide grid lines on x-axis
-        },
-      },
-      yaxis: {
-        lines: {
-          show: true, // Show grid lines on y-axis
-        },
-      },
-    },
-    dataLabels: {
-      enabled: false, // Disable data labels
-    },
+    stroke: { curve: "smooth", width: 3 },
+    // Keep tooltip shared to prevent flickering on multi-series
     tooltip: {
-      enabled: true, // Enable tooltip
-      x: {
-        format: "dd MMM yyyy", // Format for x-axis tooltip
-      },
+      shared: true,
+      intersect: false,
+      y: { formatter: (val) => `${val.toLocaleString()} Ks` }
     },
     xaxis: {
-      type: "category", // Category-based x-axis
-      categories: [
-        "Jan",
-        "Feb",
-        "Mar",
-        "Apr",
-        "May",
-        "Jun",
-        "Jul",
-        "Aug",
-        "Sep",
-        "Oct",
-        "Nov",
-        "Dec",
-      ],
-      axisBorder: {
-        show: false, // Hide x-axis border
-      },
-      axisTicks: {
-        show: false, // Hide x-axis ticks
-      },
-      tooltip: {
-        enabled: false, // Disable tooltip for x-axis points
-      },
+      categories: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+      axisBorder: { show: false },
     },
     yaxis: {
       labels: {
-        style: {
-          fontSize: "12px", // Adjust font size for y-axis labels
-          colors: ["#6B7280"], // Color of the labels
-        },
-      },
-      title: {
-        text: "", // Remove y-axis title
-        style: {
-          fontSize: "0px",
-        },
+        formatter: (val) => `${val.toLocaleString()} Ks`,
+        style: { colors: ["#6B7280"] },
       },
     },
-  };
+    dataLabels: { enabled: false },
+  }), []);
 
-  const series = [
-    {
-      name: "Sales",
-      data: [180, 190, 170, 160, 175, 165, 170, 205, 230, 210, 240, 235],
-    },
-    {
-      name: "Revenue",
-      data: [40, 30, 50, 40, 55, 40, 70, 100, 110, 120, 150, 140],
-    },
-  ];
+  // Wrap series in useMemo to prevent unnecessary re-renders
+  const series = useMemo(() => [
+    { name: "Revenue", data: data }
+  ], [data]);
+
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white px-5 pb-5 pt-5 dark:border-gray-800 dark:bg-white/[0.03] sm:px-6 sm:pt-6">
-      <div className="flex flex-col gap-5 mb-6 sm:flex-row sm:justify-between">
-        <div className="w-full">
+    <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] sm:p-6">
+      <div className="flex flex-col gap-5 mb-6 sm:flex-row sm:justify-between sm:items-center">
+        <div>
           <h3 className="text-lg font-semibold text-gray-800 dark:text-white/90">
-            Monthly Sales
+            Monthly Sales Revenue
           </h3>
           <p className="mt-1 text-gray-500 text-theme-sm dark:text-gray-400">
-            Target you’ve set for each month
+            Performance overview for {year}
           </p>
         </div>
-        <div className="flex items-start w-full gap-3 sm:justify-end">
-          <ChartTab />
-        </div>
+
+        {/* Year Filter Dropdown */}
+        <select
+          value={year}
+          onChange={(e) => setYear(Number(e.target.value))}
+          className="px-4 py-2 text-sm border border-gray-200 rounded-lg bg-transparent dark:border-gray-800 dark:text-white focus:outline-none focus:border-blue-500"
+        >
+          {lastFiveYears.map((y) => (
+            <option key={y} value={y}>{y}</option>
+          ))}
+        </select>
       </div>
 
       <div className="max-w-full overflow-x-auto custom-scrollbar">
         <div className="min-w-[1000px] xl:min-w-full">
-          <Chart options={options} series={series} type="area" height={310} />
+          {loading ? (
+            <div className="h-[310px] flex items-center justify-center text-gray-400">Loading...</div>
+          ) : (
+            <Chart options={options} series={series} type="area" height={310} />
+          )}
         </div>
       </div>
     </div>

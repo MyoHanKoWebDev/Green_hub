@@ -12,6 +12,81 @@
   transform: translateY(20px);
 }
 
+/* Custom GreenHub Animations */
+@keyframes blob {
+  0% { transform: translate(0px, 0px) scale(1); }
+  33% { transform: translate(30px, -50px) scale(1.1); }
+  66% { transform: translate(-20px, 20px) scale(0.9); }
+  100% { transform: translate(0px, 0px) scale(1); }
+}
+
+@keyframes bounce-slow {
+  0%, 100% { transform: translateY(-5%); }
+  50% { transform: translateY(0); }
+}
+
+/* Custom Animation Classes */
+.animate-blob {
+  animation: blob 7s infinite;
+}
+
+.animate-bounce-slow {
+  animation: bounce-slow 3s infinite;
+}
+
+.animation-delay-2000 {
+  animation-delay: 2s;
+}
+
+.animation-delay-4000 {
+  animation-delay: 4s;
+}
+
+@layer utilities {
+  .animation-delay-2000 {
+    animation-delay: 2s;
+  }
+  .animation-delay-4000 {
+    animation-delay: 4s;
+  }
+}
+
+/* DO NOT use display:none on the #google_translate_element itself */
+#google_translate_element {
+  opacity: 0 !important;
+  position: absolute !important;
+  z-index: -1000 !important;
+  pointer-events: none !important;
+  height: 0 !important;
+  width: 0 !important;
+  overflow: hidden !important;
+}
+
+/* BUT keep display:none for the actual bar Google creates */
+.goog-te-banner-frame, 
+.skiptranslate iframe,
+.goog-te-gadget-simple,
+#goog-gt-tt {
+  display: none !important;
+  visibility: hidden !important;
+}
+
+html, body {
+  top: 0px !important;
+  padding-top: 0px !important;
+  margin-top: 0px !important;
+}
+
+.notranslate {
+  translate: no !important;
+}
+
+/* Optional: If you want to be extra safe, 
+   target the flag and text container specifically */
+.language-label {
+  unicode-bidi: isolate;
+}
+
 /* @keyframes fade-in-down {
     0% {
         opacity: 0;

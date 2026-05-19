@@ -2,7 +2,7 @@ import React, { useRef, useState } from "react";
 import { FaRecycle } from "react-icons/fa";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "../../api/axios";
-import SuccessAlert from "../components/SuccessAlert";
+import SuccessAlert from "../components/common/SuccessAlert";
 import { useGoogleLogin } from "@react-oauth/google";
 import { useAuth } from "../context/AuthContext";
 import { FaEye, FaEyeSlash } from "react-icons/fa";

@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import ProjectFeed from "../components/Projectfeed";
-import CreateProjectPost from "../components/Createproject"; // Renamed to match your second snippet
-import Heroimg from "../components/Heroimg";
-import Footer from "../components/Footer";
+import ProjectFeed from "../components/project/Projectfeed";
+import CreateProjectPost from "../components/project/Createproject"; // Renamed to match your second snippet
+import Heroimg from "../components/common/Heroimg";
+import Footer from "../components/common/Footer";
 import {
   Dialog,
   DialogPanel,
@@ -14,9 +14,9 @@ import { Fragment } from "react";
 import axios from "axios";
 import { useAuth } from "../context/AuthContext";
 import toast from "react-hot-toast";
-import ConfirmModal from "../components/ConfirmationDelete";
+import ConfirmModal from "../components/common/ConfirmationDelete";
 
-const Projects = () => {
+const Projects = ({memberId = null, onProjectCreated , onProjectDeleted}) => {
   // const [isOpen, setIsOpen] = useState(false);
   const { user } = useAuth(); // Get auth state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -61,6 +61,7 @@ const Projects = () => {
         toast.success(res.data.message);
         // Remove from UI list
         setProjects((prev) => prev.filter((p) => p.id !== targetId));
+        if(onProjectDeleted) onProjectDeleted();
       }
     } catch (err) {
       toast.error(err.response?.data?.message || "Delete failed");
@@ -73,12 +74,16 @@ const Projects = () => {
   const fetchMemberData = async () => {
     try {
       setLoading(true);
-      // 1. Change endpoints to your member/public routes
-      const [projRes, typeRes] = await Promise.all([
-        axios.get("/api/user/projects"), // Public/Member feed
-        axios.get("/api/admin/types"), // For the filter/modal dropdown
-      ]);
+      // Construct the URL with the profile_id filter
+    let url = "/api/user/projects";
+    if (memberId) {
+      url += `?profile_id=${memberId}`;
+    }
 
+    const [projRes, typeRes] = await Promise.all([
+      axios.get(url),
+      axios.get("/api/admin/types"),
+    ]);
       // 2. Map the data based on your Laravel response structure
       setProjects(projRes.data.data);
       setProjectTypes(typeRes.data.data);
@@ -96,24 +101,29 @@ const Projects = () => {
 
   return (
     <>
-      <Heroimg
+    {!memberId &&
+    <Heroimg
         title="Community Green Projects"
         desc="Explore inspiring eco-projects created by members of our GreenHub community."
       />
+    }
 
       <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="lg:col-span-3 space-y-6 pt-10">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-gray-800">
-              Sustainable Community Projects
-            </h2>
-            <button
-              onClick={handleOpenCreate}
-              className="bg-lime-500 text-white px-6 py-2.5 rounded-xl hover:bg-lime-600 shadow-md transition-all active:scale-95"
-            >
-              Share Your Green Project
-            </button>
+        <div className="lg:col-span-3 space-y-6 pt-6">
+          {(!memberId || Number(memberId) === user?.id) && (
+        <div className="flex items-center justify-between bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
+          <div className="hidden sm:block">
+            <h4 className="font-bold text-gray-800 text-start text-xl mb-2">Showcase your eco-impact</h4>
+            <p className="text-xs text-gray-400 text-start">Share your latest green project with the world.</p>
           </div>
+          <button
+            onClick={handleOpenCreate}
+            className="bg-lime-500 text-white px-6 py-2.5 rounded-xl hover:bg-lime-600 shadow-md transition-all active:scale-95 text-md font-bold"
+          >
+            + Share Project
+          </button>
+        </div>
+      )}
 
           <ProjectFeed
             projects={projects}
@@ -174,6 +184,7 @@ const Projects = () => {
                     projectTypes={projectTypes}
                     projectToEdit={editingProject}
                     onSuccess={() => {
+                      onProjectCreated();
                       fetchMemberData(); // Refresh the feed after a new post
                       setIsModalOpen(false);
                     }}
@@ -196,8 +207,10 @@ const Projects = () => {
         title="Delete this Project?"
         message="This action will move your project to trash and permanently delete the uploaded video. This cannot be undone."
       />
-
-      <Footer />
+      
+      {!memberId &&
+        <Footer />
+      }
     </>
   );
 };

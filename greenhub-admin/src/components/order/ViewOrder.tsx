@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Table,
   TableBody,
@@ -11,6 +11,7 @@ import {
   CheckIcon,
   XMarkIcon,
   MagnifyingGlassIcon,
+  CalendarIcon,
 } from "@heroicons/react/24/outline";
 import { AnimatePresence, motion } from "framer-motion";
 import TableSkeleton from "../common/TableSkeleton.js";
@@ -42,7 +43,7 @@ interface OrderData {
 }
 
 export default function ViewOrder() {
-  const loaction = useLocation()
+  const loaction = useLocation();
   const [orders, setOrders] = useState<OrderData[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -64,11 +65,20 @@ export default function ViewOrder() {
     message: string;
   } | null>(null);
 
+  const [filterDate, setFilterDate] = useState("");
+
+  const dateInputRef = useRef<HTMLInputElement>(null);
+
+  const handleWrapperClick = () => {
+    // This force-opens the native calendar picker when clicking the div
+    dateInputRef.current?.showPicker();
+  };
+
   const fetchOrders = async () => {
     try {
       setLoading(true);
       const res = await axios.get("/user/orders", {
-        params: { search: searchTerm, status: filterStatus },
+        params: { search: searchTerm, status: filterStatus, date: filterDate },
       });
       if (res.data.status) {
         setOrders(res.data.data);
@@ -88,7 +98,7 @@ export default function ViewOrder() {
   useEffect(() => {
     const timer = setTimeout(() => fetchOrders(), 300);
     return () => clearTimeout(timer);
-  }, [searchTerm, filterStatus, location.state]);
+  }, [searchTerm, filterStatus, filterDate, location.state]);
 
   const openActionConfirm = (id: number, type: "confirm" | "reject") => {
     setActionConfig({ id, type });
@@ -155,13 +165,40 @@ export default function ViewOrder() {
             <input
               type="text"
               placeholder="Search customer..."
-              className="pl-10 pr-4 py-3 w-full rounded-lg border border-gray-200 bg-transparent py-2.5 pl-12 pr-4 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-none dark:border-gray-800 dark:bg-gray-900 dark:text-white/90 xl:w-[250px]"
+              className="pl-10 pr-4 py-3 w-full rounded-lg border border-gray-200 bg-transparent text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-none dark:border-gray-800 dark:bg-gray-900 dark:text-white/90 xl:w-[250px]"
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
 
+          <div
+            className="relative group cursor-pointer"
+            onClick={handleWrapperClick}
+          >
+            <CalendarIcon className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none group-hover:text-brand-500" />
+
+            <input
+              ref={dateInputRef}
+              type="date"
+              value={filterDate}
+              onChange={(e) => setFilterDate(e.target.value)}
+              className="pl-10 pr-4 py-3 w-full md:w-48 rounded-lg border border-gray-200 bg-white dark:bg-gray-900 text-sm text-gray-800 dark:text-white focus:border-brand-300 outline-none cursor-pointer"
+            />
+
+            {filterDate && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation(); // Prevents the calendar from opening when clearing
+                  setFilterDate("");
+                }}
+                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5 hover:bg-red-600 z-10"
+              >
+                <XMarkIcon className="w-3 h-3" />
+              </button>
+            )}
+          </div>
+
           <select
-            className="py-3 px-4 rounded-lg border border-gray-200 bg-transparent px-4 text-sm text-gray-800 focus:border-brand-300 focus:outline-none dark:border-gray-800 dark:bg-gray-900 dark:text-white/90 min-w-[160px]"
+            className="py-3 px-4 rounded-lg border border-gray-200 bg-transparent text-sm text-gray-800 focus:border-brand-300 focus:outline-none dark:border-gray-800 dark:bg-gray-900 dark:text-white/90 min-w-[160px]"
             onChange={(e) => setFilterStatus(e.target.value)}
           >
             <option value="all">All Status</option>

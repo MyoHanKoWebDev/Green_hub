@@ -124,7 +124,8 @@ class AuthController extends Controller
         // 1. Validation (Email and Password usually handled in separate functions)
         $validator = Validator::make($request->all(), [
             'name' => ['string', 'max:255', 'regex:/^[A-Za-z\s]+$/'],
-            'proImg' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:2048']
+            'email' => ['required', 'email', 'unique:users,email,' . $id], // Added email validation
+            'proImg' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
         ]);
 
         if ($validator->fails()) {
@@ -133,8 +134,8 @@ class AuthController extends Controller
 
         return DB::transaction(function () use ($request, $user) {
             // 2. Update Basic Info
-            $user->name = $request->input('name', $user->name);
-            $user->address = $request->input('address', $user->address);
+            $user->name = $request->input('name');
+            $user->email = $request->input('email'); // Added email update
 
             // 3. Handle Image Update
             if ($request->hasFile('proImg')) {
@@ -148,8 +149,6 @@ class AuthController extends Controller
                 $request->file('proImg')->move(public_path('uploads/profiles'), $imageName);
                 $user->proImg = $imageName;
             }
-
-            $user->fill($request->only(['name']));
 
             $user->save();
 
@@ -209,6 +208,12 @@ class AuthController extends Controller
 
     public function changePassword(Request $request, $id)
     {
+        // $user = $request->user();
+
+        //     if (!$user) {
+        //         return response()->json(['message' => 'User not found'], 401);
+        //     }
+
         // 1. Define Validation Rules
         $rules = [
             'current_password' => [

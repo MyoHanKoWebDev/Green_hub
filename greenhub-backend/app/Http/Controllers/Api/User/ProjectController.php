@@ -8,17 +8,24 @@ use Illuminate\Http\Request;
 
 class ProjectController extends Controller
 {
-    public function getMemberProjects()
-{
-    // Eager load memberProjects and the user associated with each one
-    $projects = EcoProject::with(['projectType', 'memberProjects.user'])
-                ->where('role', 'member')
-                ->orderBy('id', 'desc')
-                ->get();
+    public function getMemberProjects(Request $request)
+    {
+        $profileId = $request->query('profile_id');
 
-    return response()->json([
-        'status' => true,
-        'data' => $projects
-    ]);
-}
+        $projects = EcoProject::with(['projectType', 'memberProjects.user'])
+            ->where('role', 'member')
+            // If profile_id is provided, filter projects by that user
+            ->when($profileId, function ($query) use ($profileId) {
+                $query->whereHas('memberProjects', function ($q) use ($profileId) {
+                    $q->where('member_id', $profileId);
+                });
+            })
+            ->orderBy('id', 'desc')
+            ->get();
+
+        return response()->json([
+            'status' => true,
+            'data' => $projects
+        ]);
+    }
 }

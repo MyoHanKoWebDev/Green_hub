@@ -1,7 +1,7 @@
 import React from 'react'
-import Productfilter from '../components/Productfilter'
-import Heroimg from '../components/Heroimg'
-import Footer from '../components/Footer'
+import Productfilter from '../components/product/Productfilter'
+import Heroimg from '../components/common/Heroimg'
+import Footer from '../components/common/Footer'
 
 const Product = () => {
   return (

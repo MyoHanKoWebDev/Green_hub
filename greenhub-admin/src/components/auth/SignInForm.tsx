@@ -80,7 +80,6 @@ export default function SignInForm() {
               <Label>Email <span className="text-error-500">*</span></Label>
               <Input 
                 type="email"
-                placeholder="admin@pimjo.com" 
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -92,7 +91,6 @@ export default function SignInForm() {
               <div className="relative">
                 <Input
                   type={showPassword ? "text" : "password"}
-                  placeholder="Enter your password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
